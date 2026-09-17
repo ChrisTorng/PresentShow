@@ -1,0 +1,6 @@
+private/
+*.private.json
+node_modules/
+test-results/
+dist/
+.DS_Store

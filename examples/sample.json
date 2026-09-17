@@ -1,0 +1,314 @@
+{
+  "name": "相聚時刻 · 示範投影",
+  "variables": {
+    "venue": "拾光交流空間",
+    "date": "",
+    "meeting1Time": "9:40",
+    "meeting1Name": "晨間靜心",
+    "music1": "https://www.youtube.com/watch?v=M7lc1UVf-VE",
+    "music2": "https://www.youtube.com/watch?v=M7lc1UVf-VE",
+    "meeting2Time": "10:30",
+    "meeting2Name": "週末分享會",
+    "bank": "000 示範銀行",
+    "account": "000000000000",
+    "accountName": "範例公益團體（示範，請勿匯款）",
+    "offeringNote": "感謝每一份支持，讓美好的事持續發生。",
+    "scriptureReference": "今日的一句話",
+    "scriptureText": "讓我們用傾聽拉近距離，用分享點亮彼此。",
+    "reminder": "請將手機設為靜音或震動",
+    "prepare": "預備心，一起迎接美好時刻"
+  },
+  "pages": {
+    "blank": {
+      "type": "blank",
+      "label": "無字純背景"
+    },
+    "pray1": {
+      "type": "text",
+      "label": "聚會 1 · 預備開始",
+      "blocks": [
+        {
+          "kind": "eyebrow",
+          "text": "{{venue}}"
+        },
+        {
+          "kind": "title",
+          "text": "{{meeting1Name}}"
+        },
+        {
+          "kind": "subtitle",
+          "text": "{{meeting1Time}} 即將開始"
+        },
+        {
+          "kind": "text",
+          "text": "{{reminder}}\n{{prepare}}"
+        }
+      ]
+    },
+    "music1": {
+      "type": "media",
+      "label": "聚會 1 · 音樂 1",
+      "media": {
+        "kind": "youtube",
+        "src": "{{music1}}",
+        "loop": true,
+        "label": "音樂 1"
+      }
+    },
+    "prayImage": {
+      "type": "text",
+      "label": "聚會 1 · 音樂中畫面",
+      "blocks": [
+        {
+          "kind": "eyebrow",
+          "text": "{{venue}}"
+        },
+        {
+          "kind": "title",
+          "text": "{{meeting1Name}}"
+        },
+        {
+          "kind": "subtitle",
+          "text": "{{prepare}}"
+        }
+      ],
+      "media": "keep"
+    },
+    "music2": {
+      "type": "media",
+      "label": "聚會 1 · 音樂 2",
+      "media": {
+        "kind": "youtube",
+        "src": "{{music2}}",
+        "loop": true,
+        "label": "音樂 2"
+      }
+    },
+    "prayEnd": {
+      "type": "text",
+      "label": "聚會 1 · 結束",
+      "blocks": [
+        {
+          "kind": "eyebrow",
+          "text": "{{venue}}"
+        },
+        {
+          "kind": "title",
+          "text": "{{meeting1Name}}結束"
+        },
+        {
+          "kind": "subtitle",
+          "text": "謝謝參與"
+        }
+      ]
+    },
+    "pre1": {
+      "type": "text",
+      "label": "pre1 · 歡迎",
+      "blocks": [
+        {
+          "kind": "title",
+          "text": "{{venue}}"
+        },
+        {
+          "kind": "eyebrow",
+          "text": "{{date}}"
+        },
+        {
+          "kind": "subtitle",
+          "text": "{{meeting2Name}}"
+        }
+      ]
+    },
+    "pre2": {
+      "type": "text",
+      "label": "pre2 · 聚會提醒",
+      "blocks": [
+        {
+          "kind": "subtitle",
+          "text": "{{meeting2Time}} 聚會即將開始"
+        },
+        {
+          "kind": "title",
+          "text": "{{reminder}}"
+        },
+        {
+          "kind": "text",
+          "text": "{{prepare}}"
+        }
+      ]
+    },
+    "pre3": {
+      "type": "text",
+      "label": "pre3 · 奉獻資訊",
+      "blocks": [
+        {
+          "kind": "title",
+          "text": "奉獻帳號"
+        },
+        {
+          "kind": "subtitle",
+          "text": "{{bank}}"
+        },
+        {
+          "kind": "account",
+          "text": "{{account}}"
+        },
+        {
+          "kind": "text",
+          "text": "戶名　{{accountName}}"
+        }
+      ]
+    },
+    "pre4": {
+      "type": "text",
+      "label": "pre4 · 分享與支持",
+      "blocks": [
+        {
+          "kind": "subtitle",
+          "text": "{{offeringNote}}"
+        },
+        {
+          "kind": "quote",
+          "text": "{{scriptureText}}"
+        },
+        {
+          "kind": "caption",
+          "text": "{{scriptureReference}}"
+        }
+      ]
+    },
+    "main1": {
+      "type": "text",
+      "label": "main1 · 正式開始",
+      "blocks": [
+        {
+          "kind": "eyebrow",
+          "text": "{{venue}}　／　{{date}}"
+        },
+        {
+          "kind": "title",
+          "text": "{{meeting2Name}}"
+        },
+        {
+          "kind": "subtitle",
+          "text": "正式開始！"
+        }
+      ]
+    },
+    "main8": {
+      "type": "text",
+      "label": "main8 · 奉獻",
+      "blocks": [
+        {
+          "kind": "title",
+          "text": "奉獻帳號"
+        },
+        {
+          "kind": "subtitle",
+          "text": "{{bank}}"
+        },
+        {
+          "kind": "account",
+          "text": "{{account}}"
+        },
+        {
+          "kind": "text",
+          "text": "戶名　{{accountName}}"
+        },
+        {
+          "kind": "caption",
+          "text": "{{offeringNote}}"
+        },
+        {
+          "kind": "quote",
+          "text": "{{scriptureText}}"
+        },
+        {
+          "kind": "caption",
+          "text": "{{scriptureReference}}"
+        }
+      ]
+    },
+    "main9": {
+      "type": "text",
+      "label": "main9 · 聚會結束",
+      "blocks": [
+        {
+          "kind": "eyebrow",
+          "text": "{{venue}}　／　{{date}}"
+        },
+        {
+          "kind": "title",
+          "text": "{{meeting2Name}}結束"
+        },
+        {
+          "kind": "subtitle",
+          "text": "謝謝參與"
+        }
+      ]
+    },
+    "imageExample": {
+      "type": "image",
+      "label": "透明圖片範例",
+      "src": "./welcome.svg",
+      "fit": "contain",
+      "media": "keep"
+    },
+    "audioExample": {
+      "type": "media",
+      "label": "本機音檔（自行提供）",
+      "media": {
+        "kind": "audio",
+        "src": "media/song.mp3",
+        "loop": true
+      }
+    },
+    "videoExample": {
+      "type": "media",
+      "label": "本機影片（自行提供）",
+      "media": {
+        "kind": "video",
+        "src": "media/movie.mp4",
+        "loop": true
+      }
+    }
+  },
+  "sequence": [
+    "blank",
+    "pray1",
+    "music1",
+    "prayImage",
+    "music2",
+    "prayEnd",
+    "blank",
+    {
+      "label": "聚會前輪播",
+      "pages": [
+        {
+          "page": "pre1",
+          "seconds": 10
+        },
+        {
+          "page": "pre2",
+          "seconds": 12
+        },
+        {
+          "page": "pre3",
+          "seconds": 15
+        },
+        {
+          "page": "pre4",
+          "seconds": 12
+        }
+      ],
+      "loop": true
+    },
+    "main1",
+    "blank",
+    "main8",
+    "blank",
+    "main9",
+    "blank"
+  ]
+}
