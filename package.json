@@ -2,5 +2,12 @@
   "name": "present-show",
   "private": true,
   "type": "module",
-  "scripts": { "start": "node server.mjs", "test": "node --test", "build": "node build.mjs" }
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test",
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "js-yaml": "^5.4.2"
+  }
 }

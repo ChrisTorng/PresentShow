@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {compile,resolveAsset,youtubeId} from './model.js';
-const sample=JSON.parse(await readFile(new URL('./examples/sample.json',import.meta.url)));
+import {compile,resolveAsset,youtubeId} from '../src/config/model.js';
+const sample=JSON.parse(await readFile(new URL('../examples/sample.json',import.meta.url)));
 test('requested stages, date default, media continuity and stop',()=>{
   const show=compile(sample,new Date(2026,8,17));
   assert.equal(show.variables.date,'2026 / 9 / 17');assert.equal(show.items.length,17);

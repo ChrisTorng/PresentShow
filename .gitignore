@@ -1,5 +1,8 @@
 private/
 *.private.json
+*.private.yml
+*.private.yaml
+.npm-cache/
 node_modules/
 test-results/
 dist/

@@ -310,5 +310,72 @@
     "blank",
     "main9",
     "blank"
-  ]
+  ],
+  "background": "dawn",
+  "backgrounds": {
+    "dawn": {
+      "type": "abstract",
+      "seed": "sunday-2026",
+      "colors": [
+        "#fff2d5",
+        "#d8ecff"
+      ],
+      "deviation": 20,
+      "speed": 1,
+      "motion": 1.3,
+      "colorMotion": 1,
+      "blobs": 7,
+      "blur": 70
+    },
+    "sky": {
+      "type": "ribbons",
+      "seed": "open-sky",
+      "colors": [
+        "#e1f5ff",
+        "#e8e1ff"
+      ],
+      "deviation": 20,
+      "speed": 0.8,
+      "motion": 1.2,
+      "colorMotion": 0.8,
+      "blobs": 5,
+      "blur": 45
+    },
+    "rose": {
+      "type": "mist",
+      "seed": "soft-morning",
+      "colors": [
+        "#fff0d9",
+        "#fbdfea"
+      ],
+      "deviation": 15,
+      "speed": 0.65,
+      "motion": 1,
+      "colorMotion": 1,
+      "blobs": 8,
+      "blur": 100
+    },
+    "still": {
+      "type": "solid",
+      "seed": 1,
+      "colors": [
+        "#fff6e4",
+        "#e6f1ff"
+      ],
+      "deviation": 0,
+      "speed": 0,
+      "motion": 0,
+      "colorMotion": 0
+    },
+    "picture": {
+      "type": "image",
+      "src": "./landscape.svg",
+      "fit": "cover"
+    },
+    "film": {
+      "type": "video",
+      "src": "media/background.mp4",
+      "fit": "cover"
+    }
+  }
 }

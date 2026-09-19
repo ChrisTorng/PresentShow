@@ -1,0 +1,37 @@
+.background-host{position:absolute;inset:0;overflow:hidden;background:#f7f5ee;pointer-events:none}
+.background-scene{position:absolute;inset:0;overflow:hidden;isolation:isolate}
+.background-blob{position:absolute;transform-origin:center;will-change:transform,opacity;border-radius:50%;mix-blend-mode:normal}
+.background-scene>img,.background-scene>video{width:100%;height:100%;display:block}
+.audio-clouds{position:absolute;inset:-4%;will-change:transform,opacity;overflow:hidden}
+.foreground-host{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.foreground .slide-content{width:max-content;max-width:100%;padding:1.5cqw 2.4cqw;border-radius:1.2cqw;background:rgba(255,255,255,.48);box-shadow:0 .25cqw 1.2cqw #142d4326;border:1px solid #ffffff70;text-shadow:0 1px 3px #fff,0 0 10px #ffffffb0}
+.foreground.lyrics-slide{padding:0 4vw}
+.lyrics-slide .slide-content{position:absolute;top:29%;left:50%;transform:translate(-50%,-50%) scale(var(--fit,1));width:max-content;max-width:92%;gap:0;background:rgba(255,255,255,.58)}
+.projector{background:#f7f5ee;color:#233b50}
+.block.lyrics{font-size:6.4cqw;line-height:1.65;letter-spacing:.035em;font-weight:700;text-shadow:0 1px 10px #ffffff40}
+.foreground.lyrics-shadow .slide-content{background:none;border:0;box-shadow:none}
+.lyrics-shadow .block.lyrics{color:#fff;text-shadow:0 2px 3px #000,0 0 7px #000,0 0 15px #000c;-webkit-text-stroke:.04cqw #172936}
+.song-title-slide .slide-content{width:84%;padding:3cqw;text-align:left;align-items:flex-start;border-left:.5cqw solid #6d8c9c}
+.song-title-slide .block.title{font-size:8cqw}.song-title-slide .block.subtitle{font-size:4cqw;letter-spacing:.04em}
+.song-credit,.page-counter,.reading-title{position:absolute;background:#ffffffba;border-radius:.4cqw;padding:.45cqw 1cqw;box-shadow:0 2px 9px #0002;text-shadow:0 1px 3px #fff;font-size:2cqw}
+.song-credit{right:3%;bottom:3%}.page-counter{right:2%;bottom:2%;font-variant-numeric:tabular-nums}.reading-title{left:2%;top:2%}
+.foreground.reading-slide{padding:0}
+.reading-slide .slide-content{position:absolute;inset:11% 2% 9%;width:auto;max-width:none;padding:1.3cqw;align-items:stretch;justify-content:center;text-align:left;transform:none;overflow:hidden}
+.reading-slide .block{line-height:1.45;letter-spacing:.02em;width:100%;flex-shrink:0}
+.block.eyebrow,.block.caption{color:#536879}
+.song-navigation{display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:8px 17px;border-top:1px solid #edf0e8}
+.song-navigation>span{width:100%;font-size:12px;color:#617487;margin:4px 0}
+.song-navigation button{font-size:11px;padding:7px 10px;background:#f5f8fb;border-color:#dce4ec;color:#4b6379}
+.song-navigation .current-section{background:#e2eef8;border-color:#8fabca;color:#263f59}
+.side-panel select{max-width:100%;font-size:12px;padding:9px;border:1px solid var(--border);border-radius:7px;background:#fbfcf9;color:#3e5650}
+#background-info{overflow-wrap:anywhere}
+#song-text{width:100%;height:53vh;resize:vertical;border:1px solid var(--border);border-radius:7px;padding:20px;font:16px/1.7 "Microsoft JhengHei",sans-serif;background:#fff;color:#273d50}
+#song-error,#background-error{color:#a53f2b;font-size:12px;min-height:15px}
+.background-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px;margin-top:20px}
+.background-fields>label,.color-pair label{display:flex;flex-direction:column;gap:7px;font-size:12px;color:#62716b}
+.background-fields input,.background-fields select{width:100%;border:1px solid #d5ddd3;border-radius:6px;padding:9px;color:#294737;background:white}
+.color-pair{display:flex;gap:12px}.color-pair label{flex:1}.color-pair input{height:42px;padding:3px;cursor:pointer}
+.full-field{grid-column:1/-1}
+#background-editor{max-width:660px}
+.thumbnail strong{white-space:pre-line}.thumbnail small{max-height:3em;overflow:hidden}
+@media(max-width:720px){.background-fields{gap:12px}.actions button{padding:9px 10px}.song-navigation button{padding:8px}.editor-footer{gap:15px;align-items:center}}

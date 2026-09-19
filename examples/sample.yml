@@ -1,0 +1,366 @@
+name: 相聚時刻 · 示範投影
+variables:
+  venue: 拾光交流空間
+  date:
+  meeting1Time: 9:40
+  meeting1Name: 晨間靜心
+  music1: https://www.youtube.com/watch?v=M7lc1UVf-VE
+  music2: https://www.youtube.com/watch?v=M7lc1UVf-VE
+  meeting2Time: 10:30
+  meeting2Name: 週末分享會
+  bank: 000 示範銀行
+  account: 000000000000
+  accountName: 範例公益團體（示範，請勿匯款）
+  offeringNote: 感謝每一份支持，讓美好的事持續發生。
+  scriptureReference: 今日的一句話
+  scriptureText: 讓我們用傾聽拉近距離，用分享點亮彼此。
+  reminder: 請將手機設為靜音或震動
+  prepare: 預備心，一起迎接美好時刻
+pages:
+  blank:
+    type: blank
+    label: 無字純背景
+  pray1:
+    type: text
+    label: 聚會 1 · 預備開始
+    blocks:
+      - kind: eyebrow
+        text: '{{venue}}'
+      - kind: title
+        text: '{{meeting1Name}}'
+      - kind: subtitle
+        text: '{{meeting1Time}} 即將開始'
+      - kind: text
+        text: |-
+          {{reminder}}
+          {{prepare}}
+  music1:
+    type: media
+    label: 聚會 1 · 音樂 1
+    media:
+      kind: youtube
+      src: '{{music1}}'
+      loop: true
+      label: 音樂 1
+  prayImage:
+    type: image
+    label: 會前示範圖片
+    src: ./welcome.svg
+    fit: contain
+    media: keep
+  music2:
+    type: media
+    label: 靜心音樂示範
+    background: quiet
+    media:
+      kind: audio
+      src: ./quiet-demo.wav
+      loop: true
+      label: 原創靜心示範
+  prayEnd:
+    type: text
+    label: 聚會 1 · 結束
+    blocks:
+      - kind: eyebrow
+        text: '{{venue}}'
+      - kind: title
+        text: '{{meeting1Name}}結束'
+      - kind: subtitle
+        text: 謝謝參與
+  pre1:
+    type: text
+    label: pre1 · 歡迎
+    blocks:
+      - kind: title
+        text: '{{venue}}'
+      - kind: eyebrow
+        text: '{{date}}'
+      - kind: subtitle
+        text: '{{meeting2Name}}'
+  pre2:
+    type: text
+    label: pre2 · 聚會提醒
+    blocks:
+      - kind: subtitle
+        text: '{{meeting2Time}} 聚會即將開始'
+      - kind: title
+        text: '{{reminder}}'
+      - kind: text
+        text: '{{prepare}}'
+  pre3:
+    type: text
+    label: pre3 · 奉獻資訊
+    blocks:
+      - kind: title
+        text: 奉獻帳號
+      - kind: subtitle
+        text: '{{bank}}'
+      - kind: account
+        text: '{{account}}'
+      - kind: text
+        text: 戶名　{{accountName}}
+  pre4:
+    type: text
+    label: pre4 · 分享與支持
+    blocks:
+      - kind: subtitle
+        text: '{{offeringNote}}'
+      - kind: quote
+        text: '{{scriptureText}}'
+      - kind: caption
+        text: '{{scriptureReference}}'
+  main1:
+    type: text
+    label: main1 · 正式開始
+    blocks:
+      - kind: eyebrow
+        text: '{{venue}}　／　{{date}}'
+      - kind: title
+        text: '{{meeting2Name}}'
+      - kind: subtitle
+        text: 正式開始！
+  main8:
+    type: text
+    label: main8 · 奉獻
+    blocks:
+      - kind: title
+        text: 奉獻帳號
+      - kind: subtitle
+        text: '{{bank}}'
+      - kind: account
+        text: '{{account}}'
+      - kind: text
+        text: 戶名　{{accountName}}
+      - kind: caption
+        text: '{{offeringNote}}'
+      - kind: quote
+        text: '{{scriptureText}}'
+      - kind: caption
+        text: '{{scriptureReference}}'
+  main9:
+    type: text
+    label: main9 · 聚會結束
+    blocks:
+      - kind: eyebrow
+        text: '{{venue}}　／　{{date}}'
+      - kind: title
+        text: '{{meeting2Name}}結束'
+      - kind: subtitle
+        text: 謝謝參與
+  imageExample:
+    type: image
+    label: 透明圖片範例
+    src: ./welcome.svg
+    fit: contain
+    media: keep
+  audioExample:
+    type: media
+    label: 本機音檔（自行提供）
+    media:
+      kind: audio
+      src: media/song.mp3
+      loop: true
+  videoExample:
+    type: media
+    label: 本機影片（自行提供）
+    media:
+      kind: video
+      src: media/movie.mp4
+      loop: true
+background: dawn
+backgrounds:
+  dawn:
+    type: abstract
+    seed: sunday-2026
+    colors:
+      - '#fff2d5'
+      - '#d8ecff'
+    deviation: 20
+    speed: 1
+    motion: 1.3
+    colorMotion: 1
+    blobs: 7
+    blur: 70
+  sky:
+    type: ribbons
+    seed: open-sky
+    colors:
+      - '#e1f5ff'
+      - '#e8e1ff'
+    deviation: 20
+    speed: 0.8
+    motion: 1.2
+    colorMotion: 0.8
+    blobs: 5
+    blur: 45
+  rose:
+    type: mist
+    seed: soft-morning
+    colors:
+      - '#fff0d9'
+      - '#fbdfea'
+    deviation: 15
+    speed: 0.65
+    motion: 1
+    colorMotion: 1
+    blobs: 8
+    blur: 100
+  still:
+    type: solid
+    seed: 1
+    colors:
+      - '#fff6e4'
+      - '#e6f1ff'
+    deviation: 0
+    speed: 0
+    motion: 0
+    colorMotion: 0
+  picture:
+    type: image
+    src: ./landscape.svg
+    fit: cover
+  film:
+    type: video
+    src: media/background.mp4
+    fit: cover
+  quiet:
+    type: audio-reactive
+    seed: silent-contemplation
+    colors:
+      - '#fff1dc'
+      - '#dfeaff'
+    deviation: 12
+    speed: 0.22
+    motion: 0.4
+    colorMotion: 0.55
+    blobs: 7
+    blur: 110
+    sensitivity: 0.8
+    response: 0.96
+songs: |
+  # 晨光相聚（示範）
+
+  [Verse]
+  晨光照亮窗邊
+  今天又是新的開始
+
+  帶著溫柔的心
+  迎接每一次相遇
+
+  [Chorus]
+  一起分享這份喜悅
+  讓希望在心裡發芽
+
+  [Verse]
+  當我們再次相聚
+  讓彼此的故事被聽見
+
+  # 一起前行（示範）
+
+  [Verse]
+  一步一步向前走
+  路上的風景一起看
+
+  [Chorus]
+  伸出友善的雙手
+  讓同行的人感到溫暖
+
+  把心裡的感謝
+  說給身邊的人聽
+
+  # 把祝福帶走（示範）
+
+  將今天的美好收藏
+  帶著笑容回到生活
+
+  願下一次相見
+  仍有值得分享的故事
+transition:
+  type: fade
+  duration: 0.1
+sections:
+  - id: prelude
+    title: 會前準備
+    background: dawn
+    sequence:
+      - pray1
+      - music1
+      - prayImage
+      - music2
+      - prayEnd
+  - id: preparation
+    title: 聚會預備
+    background: dawn
+    sequence:
+      - label: 聚會前輪播
+        pages:
+          - page: pre1
+            seconds: 10
+          - page: pre2
+            seconds: 12
+          - page: pre3
+            seconds: 15
+          - page: pre4
+            seconds: 12
+        loop: true
+      - main1
+  - id: song1
+    title: 晨光相聚
+    background: dawn
+    sequence:
+      - song: 1
+  - id: song2
+    title: 一起前行
+    background: sky
+    sequence:
+      - song: 2
+  - id: song3
+    title: 把祝福帶走
+    background: rose
+    transition:
+      type: fade
+      duration: 0.3
+    sequence:
+      - song: 3
+  - id: giving
+    title: 分享與感謝
+    background: dawn
+    transition:
+      type: fade
+      duration: 0.1
+    sequence:
+      - main8
+      - main9
+  - id: reflection
+    title: 今日分享
+    background: dawn
+    transition: 0.1
+    sequence:
+      - text: |-
+          1. 留一點時間聆聽身邊的人，分享這一週的收穫。
+
+          2. 寫下想要完成的一件小事，與夥伴互相鼓勵。
+  - id: connection
+    title: 彼此關心
+    background: dawn
+    sequence:
+      - text: |-
+          1. 分享一件值得感謝的事。
+
+          2. 為需要幫助的人送上關懷。
+
+          3. 約定下一次相聚。
+songMeta:
+  '1':
+    title: 迎向晨光
+    english: Morning Light
+    credit: 示範創作團隊
+  '2':
+    title: 分享美好
+    english: Share the Good
+    credit: 示範創作團隊
+    lyricStyle: shadow
+  '3':
+    title: 一起前行
+    english: Together
+    credit: 示範創作團隊

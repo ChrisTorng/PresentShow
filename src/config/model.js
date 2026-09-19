@@ -1,3 +1,6 @@
+import {DEFAULT_BACKGROUND,normalizeBackground} from '../backgrounds/config.js';
+import {parseSongs} from './songs.js';
+import {expandSequence} from './sequence.js';
 export function youtubeId(src) {
   try {
     const u = new URL(src);
@@ -16,45 +19,35 @@ export function substitute(value, vars) {
   return value;
 }
 export function compile(raw, now = new Date()) {
-  if (!raw || !raw.pages || !Array.isArray(raw.sequence) || !raw.sequence.length) throw new Error('設定檔需要 pages 與非空的 sequence。');
+  if (!raw || (!raw.sections && (!Array.isArray(raw.sequence) || !raw.sequence.length))) throw new Error('設定檔需要非空的 sections 或 sequence。');
   const vars = {...raw.variables};
   vars.date ||= `${now.getFullYear()} / ${now.getMonth()+1} / ${now.getDate()}`;
   const config = substitute(raw, vars);
-  const items = [];
-  const add = (ref, group, seconds) => {
-    const id = typeof ref === 'string' ? ref : ref.page;
-    const page = config.pages[id];
-    if (!page) throw new Error(`找不到頁面：${id}`);
-    if (!['blank','text','image','media'].includes(page.type)) throw new Error(`${id}：type 必須為 blank、text、image 或 media。`);
-    if (page.blocks && (!Array.isArray(page.blocks) || page.blocks.some(b => !['eyebrow','title','subtitle','text','quote','account','caption'].includes(b.kind) || typeof b.text !== 'string'))) throw new Error(`${id}：blocks 需指定有效的 kind 與文字 text。`);
-    if (page.type === 'image' && !page.src) throw new Error(`${id}：圖片需要 src。`);
-    if (page.fit && !['contain','original'].includes(page.fit)) throw new Error(`${id}：fit 請使用 contain 或 original。`);
-    const duration = typeof ref === 'object' ? (ref.seconds ?? seconds ?? page.seconds ?? 0) : (seconds ?? page.seconds ?? 0);
-    if (!Number.isFinite(duration) || duration < 0) throw new Error(`${id}：seconds 必須是大於等於 0 的數字。`);
-    items.push({...page,id,group,seconds:duration,label:page.label || id});
-  };
-  for (const entry of config.sequence) {
-    if (entry && typeof entry === 'object' && entry.pages) {
-      if (!Array.isArray(entry.pages) || !entry.pages.length) throw new Error('輪播 pages 不可為空。');
-      const start = items.length;
-      entry.pages.forEach(ref => add(ref,entry.label || '輪播',entry.seconds ?? 10));
-      for (let i=start;i<items.length;i++) items[i].autoNext = i < items.length-1 ? i+1 : entry.loop ? start : (entry.continue ? i+1 : null);
-    } else add(entry);
-  }
+  const songs=parseSongs(config.songs || '');
+  const backgrounds=Object.fromEntries(Object.entries(config.backgrounds || {default:DEFAULT_BACKGROUND}).map(([id,value])=>[id,normalizeBackground(value,id)]));
+  const defaultBackground=config.background || Object.keys(backgrounds)[0];
+  if(!Object.hasOwn(backgrounds,defaultBackground))throw new Error(`找不到預設背景：${defaultBackground}`);
+  const {items,sections}=expandSequence(config,songs,backgrounds,defaultBackground);
   let track = null;
+  let background=backgrounds[defaultBackground];
   items.forEach((item,index) => {
+    if(item.background && item.background!=='keep'){
+      if(typeof item.background!=='string' || !Object.hasOwn(backgrounds,item.background))throw new Error(`${item.id}：找不到背景 ${item.background}。`);
+      background=backgrounds[item.background];
+    }
+    item.background=background;
     if (item.media && item.media !== 'keep' && item.media !== 'stop') {
       const media = item.media;
       if (typeof media !== 'object' || !media.src || !['youtube','audio','video'].includes(media.kind)) throw new Error(`${item.id}：media 需要 kind（youtube/audio/video）與 src。`);
       if (media.kind === 'youtube' && !youtubeId(media.src)) throw new Error(`${item.id}：無效的 YouTube 網址。`);
-      track = {...media,key:`${index}:${media.src}`,loop:media.loop !== false};
+      track = {...media,key:`${JSON.stringify(item.origin)}:${media.src}`,loop:media.loop !== false};
     } else if (item.media !== 'keep') track = null;
     item.track = track ? {...track} : null;
     if (item.type === 'media' && !track) throw new Error(`${item.id}：媒體頁需要 media。`);
     if (!Object.hasOwn(item,'autoNext')) item.autoNext = item.seconds ? (index+1 < items.length ? index+1 : null) : null;
     if (item.autoNext >= items.length) item.autoNext = null;
   });
-  return {name:config.name || '未命名投影',items,variables:vars};
+  return {name:config.name || '未命名投影',items,variables:vars,backgrounds,songs,sections};
 }
 export function resolveAsset(src, base, assets = new Map()) {
   const clean = src.replaceAll('\\','/').replace(/^\.\//,'');
