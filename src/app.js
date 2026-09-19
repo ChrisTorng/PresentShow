@@ -107,7 +107,7 @@ function update(){
   $('#section-nav').querySelectorAll('button').forEach(button=>button.classList.toggle('active',Number(button.dataset.section)===item.section.index));
 }
 async function fetchTitles(compiled){
- const tracks=[...new Map(compiled.items.map(item=>item.track).filter(track=>track?.kind==='youtube'&&track.autoTitle).map(track=>[track.src,track])).values()];
+ const tracks=[...new Map(compiled.items.map(item=>item.track).filter(track=>track?.kind==='youtube'&&track.autoTitle&&!track.label).map(track=>[track.src,track])).values()];
  for(const track of tracks){
   if(!titleRequests.has(track.src))titleRequests.set(track.src,fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(track.src)}&format=json`,{signal:AbortSignal.timeout(6000)}).then(r=>r.ok?r.json():null).catch(()=>null));
   const data=await titleRequests.get(track.src);if(show!==compiled)return;

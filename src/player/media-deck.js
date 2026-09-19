@@ -1,3 +1,4 @@
+import {loopWindow,loopEnvelope} from './loop-envelope.js';
 import {youtubeId} from '../config/model.js';
 let apiPromise;
 function youtubeAPI(){
@@ -10,10 +11,10 @@ function youtubeAPI(){
 }
 export function fadeGains(progress){const p=Math.max(0,Math.min(1,progress));return {out:1-p,in:p};}
 export class MediaDeck{
-  constructor(host,onError){this.host=host;this.onError=onError;this.current=null;this.outgoing=null;this.version=0;this.volume=80;this.shield=false;this.frame=0;}
+  constructor(host,onError){this.host=host;this.onError=onError;this.current=null;this.outgoing=null;this.version=0;this.volume=80;this.shield=false;this.frame=0;this.loopTimer=setInterval(()=>this.tickLoops(),100);}
   dispose(entry){if(!entry)return;entry.alive=false;entry.cancelReady?.();clearTimeout(entry.timeout);if(entry.native){entry.native.pause();entry.native.removeAttribute('src');entry.native.load();}entry.player?.destroy?.();entry.root.remove();}
   finish(){cancelAnimationFrame(this.frame);this.dispose(this.outgoing);this.outgoing=null;if(this.current){this.current.gain=1;this.current.root.style.opacity='1';}this.settings();}
-  settings(){for(const e of [this.current,this.outgoing])if(e){const gain=(this.shield||!e.active?0:this.volume/100)*e.gain;if(e.native){e.native.muted=!e.active;e.native.volume=gain;e.native.loop=e.track.loop;}if(e.ready)e.player?.setVolume(gain*100);}}
+  settings(){for(const e of [this.current,this.outgoing])if(e){const gain=(this.shield||!e.active?0:this.volume/100)*e.gain*(e.loopGain??1);if(e.native){e.native.muted=!e.active;e.native.volume=gain;e.native.loop=e.track.loop;}if(e.ready)e.player?.setVolume(gain*100);}}
   async create(track,opts){
     const root=document.createElement('div');root.className='media-entry';this.host.append(root);
     const e={root,track,active:opts.active,alive:true,gain:opts.fade?0:1,ready:false,wants:opts.playing};this.current=e;
@@ -25,7 +26,7 @@ export class MediaDeck{
           e.cancelReady=resolve;const mount=document.createElement('div');root.append(mount);
           e.player=new YT.Player(mount,{videoId:youtubeId(track.src),playerVars:{playsinline:1,controls:1,rel:0,origin:location.origin},events:{
             onReady:()=>{if(!e.alive)return;e.ready=true;clearTimeout(e.timeout);this.settings();if(opts.resume)e.player.seekTo(opts.resume,true);if(e.wants)e.player.playVideo();resolve();},
-            onStateChange:event=>{if(!e.alive)return;if(event.data===1&&this.current===e)this.onError('');if(event.data===0 && e.track.loop){e.player.seekTo(0,true);e.player.playVideo();}},
+            onStateChange:event=>{if(!e.alive)return;if(event.data===1&&this.current===e)this.onError('');if(event.data===0 && e.track.loop){e.loopGain=0;e.loopPhase='seeking';this.settings();e.player.seekTo(e.track.loopStart??0,true);e.player.playVideo();}},
             onAutoplayBlocked:()=>{if(e.alive&&this.current===e)this.onError('YouTube 尚未允許播放，請按「啟用播放」。');},
             onError:event=>{if(e.alive&&this.current===e){this.onError(`YouTube 無法播放（${event.data}）。可改用本機媒體。`);resolve();}}
           }});
@@ -53,9 +54,19 @@ export class MediaDeck{
   }
   async playEntry(e,play){if(!e?.alive)return;e.wants=play;if(e.native){if(play)try{await e.native.play();if(e.alive&&this.current===e)this.onError('');}catch(error){if(e.alive&&this.current===e&&error.name!=='AbortError')this.onError('瀏覽器尚未允許播放，請按「啟用播放」。');}else e.native.pause();}else if(e.ready){play?e.player.playVideo():e.player.pauseVideo();}}
   play(play){this.playEntry(this.current,play);if(!play)this.playEntry(this.outgoing,false);}
-  seek(time){const e=this.current;if(e?.native?.readyState)e.native.currentTime=Number(time)||0;else if(e?.ready)e.player.seekTo(Number(time)||0,true);}
-  loop(value){if(this.current)this.current.track.loop=value;this.settings();}
+  seek(time){const e=this.current;if(e){e.loopPhase='normal';e.loopGain=1;this.settings();}if(e?.native?.readyState)e.native.currentTime=Number(time)||0;else if(e?.ready)e.player.seekTo(Number(time)||0,true);}
+  loop(value){if(this.current){this.current.track.loop=value;this.current.loopPhase='normal';this.current.loopGain=1;}this.settings();}
+  tickLoops(){
+    for(const e of [this.current,this.outgoing]){
+      if(!e?.alive||!e.ready||!e.player)continue;
+      const window=loopWindow(e.track,e.player.getDuration());
+      const result=loopEnvelope(window,e.player.getCurrentTime(),e.player.getPlayerState()===1,e.loopPhase);
+      e.loopPhase=result.phase;e.loopGain=result.gain;
+      // Set zero volume before seeking; do not fade up until playback actually returns.
+      this.settings();if(result.seek!==undefined){e.player.seekTo(result.seek,true);e.player.playVideo();}
+    }
+  }
   status(){const e=this.current,playing=e?.native?!e.native.paused:e?.ready?e.player.getPlayerState()===1:false;const time=e?.native?.currentTime??(e?.ready?e.player.getCurrentTime():0),duration=e?.native?.duration??(e?.ready?e.player.getDuration():0);return {time:Number.isFinite(time)?time:0,duration:Number.isFinite(duration)?duration:0,playing,trackKey:e?.track.key||null};}
   sync(state){const e=this.current;if(!e||e.active||e.track.key!==state.trackKey)return;if(Math.abs(this.status().time-state.time)>.5)this.seek(state.time);if(this.status().playing!==state.playing)this.playEntry(e,state.playing);}
-  destroy(){this.version++;this.finish();this.dispose(this.current);this.current=null;}
+  destroy(){clearInterval(this.loopTimer);this.version++;this.finish();this.dispose(this.current);this.current=null;}
 }

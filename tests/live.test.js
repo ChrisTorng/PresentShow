@@ -20,3 +20,8 @@ test('carousel auto-start and next preview follow the actual loop; manual page h
 test('crossfade endpoints and halfway gains do not amplify audio',()=>{
  assert.deepEqual(fadeGains(0),{out:1,in:0});assert.deepEqual(fadeGains(.5),{out:.5,in:.5});assert.deepEqual(fadeGains(1),{out:0,in:1});
 });
+
+import {AudioMeter} from '../src/player/audio-meter.js';
+test('detaching analysis keeps the outgoing audio connected for its remaining fade',()=>{
+ const meter=new AudioMeter(),calls=[],destination={};meter.context={destination};meter.source={disconnect(){calls.push('disconnect')},connect(node){calls.push(node)}};meter.element={paused:false};meter.detach();assert.deepEqual(calls,['disconnect',destination]);assert.equal(meter.element,null);assert.equal(meter.source,null);
+});

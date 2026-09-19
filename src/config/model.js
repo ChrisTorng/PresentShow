@@ -38,6 +38,8 @@ export function compile(raw, now = new Date()) {
     item.background=background;
     if (item.media && item.media !== 'keep' && item.media !== 'stop') {
       const media = item.media;
+      for(const key of ['loopStart','loopEnd','loopTrimEnd','loopFade'])if(media[key]!==undefined&&(!Number.isFinite(media[key])||media[key]<0))throw new Error(`${item.id}：${key} 必須是非負秒數。`);
+      if(media.loopEnd!==undefined&&media.loopEnd<=(media.loopStart??0))throw new Error(`${item.id}：loopEnd 必須大於 loopStart。`);
       if (typeof media !== 'object' || !media.src || !['youtube','audio','video'].includes(media.kind)) throw new Error(`${item.id}：media 需要 kind（youtube/audio/video）與 src。`);
       if (media.kind === 'youtube' && !youtubeId(media.src)) throw new Error(`${item.id}：無效的 YouTube 網址。`);
       track = {...media,key:`${JSON.stringify(item.origin)}:${media.src}`,loop:media.loop !== false};

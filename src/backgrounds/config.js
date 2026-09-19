@@ -9,8 +9,8 @@ export const BACKGROUND_STYLES = {
   video: {label:'循環背景影片'}
 };
 export const DEFAULT_BACKGROUND = {
-  type:'abstract',seed:'sunday-morning',colors:['#fff1d6','#dcefff'],
-  deviation:20,speed:1,motion:1,colorMotion:1,blobs:7,blur:80,sensitivity:1,response:0.94
+  type:'abstract',seed:'sunday-morning',colors:['#f6cb78','#81bbeb'],
+  deviation:20,speed:1.15,motion:1.8,colorMotion:1,blobs:7,blur:55,sensitivity:1,response:0.94
 };
 export function normalizeBackground(value = {}, id = 'default') {
   if(!value || typeof value!=='object' || Array.isArray(value))throw new Error(`背景 ${id} 必須是設定物件。`);

@@ -1,7 +1,7 @@
 name: 相聚時刻 · 示範投影
 variables:
   venue: 拾光交流空間
-  date:
+  date: 2026/9/20
   meeting1Time: 9:40
   meeting1Name: 晨間靜心
   music1: https://www.youtube.com/watch?v=M7lc1UVf-VE
@@ -41,8 +41,10 @@ pages:
       kind: youtube
       src: '{{music1}}'
       loop: true
+      loopTrimEnd: 20
+      loopFade: 1.5
       label: 晨間音樂（示範影片）
-      autoTitle: true
+      autoTitle: false
   prayImage:
     type: image
     label: 會前示範圖片
@@ -92,7 +94,7 @@ pages:
         text: '{{date}}'
       - kind: subtitle
         text: '{{meeting2Name}}'
-    qr: qr-demo.svg
+    qr: { src: qr-demo.svg, size: 21 }
   pre2:
     type: text
     label: pre2 · 聚會提醒
@@ -103,7 +105,7 @@ pages:
         text: '{{reminder}}'
       - kind: text
         text: '{{prepare}}'
-    qr: qr-demo.svg
+    qr: { src: qr-demo.svg, size: 21 }
   pre3:
     type: text
     label: pre3 · 奉獻資訊
@@ -116,7 +118,9 @@ pages:
         text: '{{account}}'
       - kind: text
         text: 戶名　{{accountName}}
-    qr: qr-demo.svg
+    qr:
+      src: qr-demo.svg
+      size: 21
   pre4:
     type: text
     label: pre4 · 分享與支持
@@ -127,7 +131,7 @@ pages:
         text: '{{scriptureText}}'
       - kind: caption
         text: '{{scriptureReference}}'
-    qr: qr-demo.svg
+    qr: { src: qr-demo.svg, size: 21 }
   main1:
     type: text
     label: main1 · 正式開始
@@ -156,6 +160,9 @@ pages:
         text: '{{scriptureText}}'
       - kind: caption
         text: '{{scriptureReference}}'
+    qr:
+      src: qr-demo.svg
+      size: 21
   main9:
     type: text
     label: main9 · 聚會結束
@@ -232,7 +239,7 @@ pages:
       kind: youtube
       src: https://www.youtube.com/watch?v=M7lc1UVf-VE
       label: 回應音樂（示範影片）
-      autoTitle: true
+      autoTitle: false
       loop: false
 background: dawn
 backgrounds:
@@ -240,38 +247,38 @@ backgrounds:
     type: abstract
     seed: sunday-2026
     colors:
-      - '#fff2d5'
-      - '#d8ecff'
+      - '#f6cb78'
+      - '#81bbeb'
     deviation: 20
     speed: 1
-    motion: 1.3
+    motion: 1.7
     colorMotion: 1
     blobs: 7
-    blur: 70
+    blur: 55
   sky:
     type: ribbons
     seed: open-sky
     colors:
-      - '#e1f5ff'
-      - '#e8e1ff'
+      - '#73cee8'
+      - '#b49ae2'
     deviation: 20
     speed: 0.8
-    motion: 1.2
+    motion: 1.7
     colorMotion: 0.8
     blobs: 5
-    blur: 45
+    blur: 55
   rose:
     type: mist
     seed: soft-morning
     colors:
-      - '#fff0d9'
-      - '#fbdfea'
+      - '#f1c182'
+      - '#e898ba'
     deviation: 15
     speed: 0.65
-    motion: 1
+    motion: 1.7
     colorMotion: 1
     blobs: 8
-    blur: 100
+    blur: 55
   still:
     type: solid
     seed: 1
@@ -294,14 +301,14 @@ backgrounds:
     type: audio-reactive
     seed: silent-contemplation
     colors:
-      - '#fff1dc'
-      - '#dfeaff'
+      - '#edca8f'
+      - '#98b9e9'
     deviation: 12
     speed: 0.22
-    motion: 0.4
+    motion: 0.65
     colorMotion: 0.55
     blobs: 7
-    blur: 110
+    blur: 80
     sensitivity: 0.8
     response: 0.96
 songs: |
@@ -415,13 +422,22 @@ sections:
     title: 彼此關心
     background: dawn
     sequence:
-      - responseSong
       - text: |-
           1. 分享一件值得感謝的事。
 
           2. 為需要幫助的人送上關懷。
 
           3. 約定下一次相聚。
+  - id: response
+    title: 回應音樂
+    background: dawn
+    sequence:
+      - responseSong
+  - id: closing
+    title: 活動結束
+    background: dawn
+    sequence:
+      - main9
 songMeta:
   '1':
     title: 迎向晨光
