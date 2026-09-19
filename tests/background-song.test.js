@@ -33,7 +33,7 @@ test('V/P/C/B shortcuts cycle section starts only, within current song occurrenc
   const {items}=compile(raw);
   assert.equal(sectionTarget(items,1,'V'),5);assert.equal(sectionTarget(items,5,'v'),1);assert.equal(sectionTarget(items,2,'P'),3);
   assert.equal(sectionTarget(items,4,'C'),4);assert.equal(sectionTarget(items,1,'B'),null);
-  assert.equal(sectionTarget(items,7,'C'),7);assert.equal(sectionTarget(items,0,'C'),null);
+  assert.equal(sectionTarget(items,7,'C'),7);assert.equal(sectionTarget(items,0,'C'),4);
 });
 test('background inheritance is deterministic even on direct jumps',()=>{
   const show=compile(raw);assert.equal(show.items[1].background.id,'light');assert.equal(show.items[8].background.id,'rose');

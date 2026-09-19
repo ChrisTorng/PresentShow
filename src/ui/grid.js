@@ -1,3 +1,6 @@
+import {ForegroundManager} from '../player/foreground.js';
+import {youtubeId} from '../config/model.js';
+let renderers=[],observer;
 export function renderOutline(container,show,onSelect){
   container.replaceChildren();
   for(const section of show.sections){
@@ -8,6 +11,8 @@ export function renderOutline(container,show,onSelect){
   }
 }
 export function renderGrid({container,show,asset,onSelect,onReorder}){
+  renderers.forEach(r=>r.destroy());renderers=[];observer?.disconnect();
+  observer=new ResizeObserver(entries=>{for(const entry of entries){entry.target.firstElementChild.style.transform=`scale(${entry.contentRect.width/1600})`;}});
   container.replaceChildren();let dragging=null;
   for(const section of show.sections){
     const group=document.createElement('section');group.className='sequence-section';group.id=`section-${section.index}`;
@@ -16,25 +21,20 @@ export function renderGrid({container,show,asset,onSelect,onReorder}){
     const grid=document.createElement('div');grid.className='slide-grid';
     for(let i=section.start;i<=section.end;i++){
       const item=show.items[i],card=document.createElement('button');card.className='slide-card';card.dataset.index=i;card.draggable=!['song','song-title','reading','boundary'].includes(item.origin.kind);card.title=`${i+1}. ${item.label}`;card.setAttribute('aria-label',card.title);
-      const thumb=document.createElement('div');thumb.className=`thumbnail ${item.type==='media'?'media-thumb':''} ${item.song&&!item.song.titlePage?'lyric-thumb':''} ${item.lyricStyle==='shadow'?'shadow-thumb':''}`;
-      if(item.type!=='media'){
-        thumb.style.background=`linear-gradient(130deg,${item.background.colors[0]},${item.background.colors[1]})`;
-        const source=item.background.poster || (item.background.type==='image'?item.background.src:null);
-        if(source){const image=document.createElement('img');image.className='thumb-background';try{image.src=asset(source);}catch{}image.alt='';thumb.append(image);}
-      }
-      if(item.type==='image'){
-        const image=document.createElement('img');try{image.src=asset(item.src);}catch{}image.alt=item.alt||item.label;image.className='thumb-foreground';thumb.append(image);
-      }else if(item.type==='media'){
-        const symbol=document.createElement('span');symbol.className='thumb-media';symbol.textContent=item.track?.kind==='audio'?'♫':'▶';thumb.append(symbol);
-        const text=document.createElement('small');text.textContent=item.track?.label || item.label;thumb.append(text);
-      }else if(item.type==='text'){
-        const blocks=item.blocks||[],title=blocks.find(b=>['title','quote','account','lyrics'].includes(b.kind))||blocks[0];
-        const copy=document.createElement('div');copy.className='thumb-copy';if(item.lyricLines)copy.style.width=`min(94%, ${Math.max(...item.lyricLines.map(line=>Array.from(line).length))*.85+.8}vw)`;const main=document.createElement('strong');main.textContent=title?.text||'';copy.append(main);
-        const secondary=blocks.find(b=>b!==title);if(secondary){const small=document.createElement('small');small.textContent=secondary.text;copy.append(small);}thumb.append(copy);
-      }
+      const thumb=document.createElement('div');thumb.className='faithful-thumb';
+      const stage=document.createElement('div');stage.className='thumbnail-stage slide-surface';
+      stage.style.background=`linear-gradient(130deg,${item.background.colors[0]},${item.background.colors[1]})`;
+      const source=item.background.poster||(item.background.type==='image'?item.background.src:null);
+      if(source){const image=document.createElement('img');image.className='thumbnail-background';try{image.src=asset(source);}catch{}image.alt='';stage.append(image);}
+      const host=document.createElement('div');host.className='foreground-host';stage.append(host);thumb.append(stage);
+      const display=structuredClone(item);display.transition={type:'none',duration:0};
+      if(display.src)try{display.src=asset(display.src);}catch{}
+      if(display.qr)try{display.qr=typeof display.qr==='string'?asset(display.qr):{...display.qr,src:asset(display.qr.src)};}catch{}
+      if(display.track?.kind==='youtube')display.track.poster=`https://i.ytimg.com/vi/${youtubeId(display.track.src)}/hqdefault.jpg`;
+      const renderer=new ForegroundManager(host,()=>{});renderer.render(display,false,true);renderers.push(renderer);observer.observe(thumb);
       const meta=document.createElement('div');meta.className='card-meta';
       const n=document.createElement('span');n.className='card-index';n.textContent=String(i+1).padStart(2,'0');
-      const label=document.createElement('span');label.className='card-title';label.textContent=item.type==='blank'?'':item.song?.titlePage?'標題':item.song?item.song.sectionLabel:item.label;
+      const label=document.createElement('span');label.className='card-title';label.textContent=item.type==='blank'?'':item.song?.titlePage?'標題':item.song&&!item.song.boundary?item.song.sectionLabel||item.label:item.label;
       const badge=document.createElement('span');badge.className='card-badge';badge.textContent=item.seconds?`${item.seconds}s`:item.song?(item.song.sectionStart?item.song.sectionKey||'':''):item.track?.loop?'↻':'';
       meta.append(n,label,badge);card.append(thumb,meta);
       if(item.group){const tag=document.createElement('span');tag.className='group-label';tag.textContent=`↻ ${item.group}`;card.append(tag);}

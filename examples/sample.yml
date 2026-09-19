@@ -36,12 +36,13 @@ pages:
           {{prepare}}
   music1:
     type: media
-    label: 聚會 1 · 音樂 1
+    label: 晨間靜心
     media:
       kind: youtube
       src: '{{music1}}'
       loop: true
-      label: 音樂 1
+      label: 晨間音樂（示範影片）
+      autoTitle: true
   prayImage:
     type: image
     label: 會前示範圖片
@@ -49,7 +50,7 @@ pages:
     fit: contain
     media: keep
   music2:
-    type: media
+    type: text
     label: 靜心音樂示範
     background: quiet
     media:
@@ -57,6 +58,16 @@ pages:
       src: ./quiet-demo.wav
       loop: true
       label: 原創靜心示範
+    blocks:
+      - kind: eyebrow
+        text: 給自己一段安靜的時間
+      - kind: title
+        text: 靜默
+    crossfade: 2
+    exitCrossfade: 2
+    transition:
+      type: fade
+      duration: 2
   prayEnd:
     type: text
     label: 聚會 1 · 結束
@@ -67,6 +78,10 @@ pages:
         text: '{{meeting1Name}}結束'
       - kind: subtitle
         text: 謝謝參與
+    background: dawn
+    transition:
+      type: fade
+      duration: 0.1
   pre1:
     type: text
     label: pre1 · 歡迎
@@ -77,6 +92,7 @@ pages:
         text: '{{date}}'
       - kind: subtitle
         text: '{{meeting2Name}}'
+    qr: qr-demo.svg
   pre2:
     type: text
     label: pre2 · 聚會提醒
@@ -87,6 +103,7 @@ pages:
         text: '{{reminder}}'
       - kind: text
         text: '{{prepare}}'
+    qr: qr-demo.svg
   pre3:
     type: text
     label: pre3 · 奉獻資訊
@@ -99,6 +116,7 @@ pages:
         text: '{{account}}'
       - kind: text
         text: 戶名　{{accountName}}
+    qr: qr-demo.svg
   pre4:
     type: text
     label: pre4 · 分享與支持
@@ -109,6 +127,7 @@ pages:
         text: '{{scriptureText}}'
       - kind: caption
         text: '{{scriptureReference}}'
+    qr: qr-demo.svg
   main1:
     type: text
     label: main1 · 正式開始
@@ -167,6 +186,54 @@ pages:
       kind: video
       src: media/movie.mp4
       loop: true
+  service:
+    type: text
+    layout: roster
+    label: 活動工作分配
+    heading: '{{date}} 活動工作分配'
+    media: keep
+    columns:
+      - rows:
+          - role: 分享
+            name: 林小禾
+          - role: 主持
+            name: 陳晨
+          - role: 協作
+            name: 王可晴
+          - role: 音樂
+            name: 示範樂團
+          - role: 投影
+            name: 周小宇
+      - rows:
+          - role: 音控
+            name: 李樂安
+          - role: 直播
+            name: 張星
+          - role: 接待
+            name: 黃小青
+          - role: 場務
+            name: 吳晴晴
+          - role: 兒童活動
+            name: 許小悠
+  prepareHeart:
+    type: text
+    label: 預備開始
+    blocks:
+      - kind: eyebrow
+        text: '{{venue}}'
+      - kind: title
+        text: 預備開始
+      - kind: subtitle
+        text: 安靜片刻，一起迎接今天
+  responseSong:
+    type: media
+    label: 回應音樂
+    media:
+      kind: youtube
+      src: https://www.youtube.com/watch?v=M7lc1UVf-VE
+      label: 回應音樂（示範影片）
+      autoTitle: true
+      loop: false
 background: dawn
 backgrounds:
   dawn:
@@ -286,6 +353,7 @@ sections:
       - pray1
       - music1
       - prayImage
+      - service
       - music2
       - prayEnd
   - id: preparation
@@ -295,14 +363,17 @@ sections:
       - label: 聚會前輪播
         pages:
           - page: pre1
-            seconds: 10
+            seconds: 5
           - page: pre2
-            seconds: 12
+            seconds: 5
           - page: pre3
-            seconds: 15
+            seconds: 5
           - page: pre4
-            seconds: 12
+            seconds: 5
         loop: true
+        autoStart: true
+        seconds: 5
+      - prepareHeart
       - main1
   - id: song1
     title: 晨光相聚
@@ -344,6 +415,7 @@ sections:
     title: 彼此關心
     background: dawn
     sequence:
+      - responseSong
       - text: |-
           1. 分享一件值得感謝的事。
 

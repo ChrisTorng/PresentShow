@@ -42,7 +42,7 @@ registerBackgroundStyle('image',({root,config,onError})=>{
 registerBackgroundStyle('video',({root,config,epoch,onError})=>{
   const video=document.createElement('video');video.muted=true;video.loop=true;video.autoplay=true;video.playsInline=true;if(config.poster)video.poster=config.poster;video.src=config.src;video.style.objectFit=config.fit||'cover';
   let alive=true;
-  const resume=()=>video.play().catch(()=>{if(alive)onError('背景影片播放受阻，請在投影視窗按「啟用播放／聲音」。');});
+  const resume=()=>video.play().then(()=>{if(alive)onError('');}).catch(e=>{if(alive && e.name!=='AbortError')onError('背景影片播放受阻，請按控制台的「啟用播放」。');});
   video.onloadedmetadata=()=>{if(Number.isFinite(video.duration) && video.duration>0)video.currentTime=((Date.now()-epoch)/1000)%video.duration;resume();};
   video.onerror=()=>onError('背景影片無法載入或格式不支援，請檢查素材。');root.append(video);
   return {resume,destroy(){alive=false;video.onloadedmetadata=null;video.onerror=null;video.pause();video.removeAttribute('src');video.load();video.remove();}};
@@ -59,7 +59,7 @@ export class BackgroundManager {
     this.host.dataset.background=config.id;this.host.dataset.seed=String(config.seed);
     const factory=renderers.get(config.type);
     if(!factory){this.onError(`背景樣式 ${config.type} 尚未註冊播放器。`);this.instance=null;}
-    else this.instance=factory({root,config,epoch,onError:this.onError});
+    else {this.onError('');this.instance=factory({root,config,epoch,onError:message=>{if(this.root===root)this.onError(message);}});}
     const duration=transition.type==='fade'?transition.duration*1000:0;
     if(previousRoot && duration){
       const opacity=getComputedStyle(previousRoot).opacity;previousRoot.getAnimations().forEach(a=>a.cancel());

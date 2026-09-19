@@ -25,6 +25,7 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
       const pageId=typeof ref==='string'?ref:ref?.page,page=config.pages?.[pageId];
       if(!page)throw new Error(`找不到頁面：${pageId}`);
       if(!['blank','text','image','media'].includes(page.type))throw new Error(`${pageId}：type 必須為 blank、text、image 或 media。`);
+      if(page.layout==='roster' && (!Array.isArray(page.columns)||page.columns.some(c=>!Array.isArray(c.rows))))throw new Error(`${pageId}：服事表 columns 需要 rows。`);
       if(page.blocks && (!Array.isArray(page.blocks) || page.blocks.some(b=>!['eyebrow','title','subtitle','text','quote','account','caption','lyrics'].includes(b.kind) || typeof b.text!=='string')))throw new Error(`${pageId}：blocks 需指定有效的 kind 與文字 text。`);
       if(page.type==='image' && !page.src)throw new Error(`${pageId}：圖片需要 src。`);
       if(page.fit && !['contain','original'].includes(page.fit))throw new Error(`${pageId}：fit 請使用 contain 或 original。`);
@@ -61,12 +62,17 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
         if(!Array.isArray(entry.pages) || !entry.pages.length)throw new Error('輪播 pages 不可為空。');
         change(entry.background,entry.transition);const start=items.length;
         entry.pages.forEach((ref,sub)=>add(ref,sequenceIndex,sub,entry.label||'輪播',entry.seconds??10));
-        for(let i=start;i<items.length;i++)items[i].autoNext=i<items.length-1?i+1:entry.loop?start:entry.continue?i+1:null;
+        for(let i=start;i<items.length;i++){items[i].autoStart=entry.autoStart!==false;items[i].autoNext=i<items.length-1?i+1:entry.loop?start:entry.continue?i+1:null;}
       }else add(entry,sequenceIndex);
     });
     change(section.endBackground,section.endTransition);
     if(bookends && (items.at(-1)?.type!=='blank' || items.at(-1)?.background!==currentBackground))boundary('end');
-    meta.end=items.length-1;sections.push(meta);
+    meta.end=items.length-1;
+    const songItems=items.slice(meta.start,meta.end+1).filter(p=>p.song);
+    if(songItems.length){
+      for(const [boundary,nearest] of [[items[meta.start],songItems[0]],[items[meta.end],songItems.at(-1)]])if(boundary.type==='blank')boundary.song={id:nearest.song.id,title:nearest.song.title,instance:nearest.song.instance,boundary:true};
+    }
+    sections.push(meta);
   });
   return {items,sections};
 }
