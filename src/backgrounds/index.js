@@ -15,9 +15,9 @@ function animated({root,config,epoch}){
     animation.playbackRate=config.speed;
     animation.currentTime=Math.max(0,Date.now()-epoch)*config.speed+plan.phase*plan.duration;
     if(config.speed===0)animation.pause();
-    animations.push(animation);
+    animations.push({animation,plan});
   }
-  return {destroy(){animations.forEach(a=>a.cancel());}};
+  return {suspend(value){for(const {animation,plan} of animations){if(value||config.speed===0)animation.pause();else{animation.currentTime=Math.max(0,Date.now()-epoch)*config.speed+plan.phase*plan.duration;animation.play();}}},destroy(){animations.forEach(({animation})=>animation.cancel());}};
 }
 for(const type of ['abstract','ribbons','mist'])registerBackgroundStyle(type,animated);
 registerBackgroundStyle('audio-reactive',({root,config,epoch})=>{
@@ -31,7 +31,7 @@ registerBackgroundStyle('audio-reactive',({root,config,epoch})=>{
     clouds.style.opacity=String(.7+level*.25);
     root.style.background=mixColor(config.colors,Math.max(0,Math.min(1,.3+pitch*.3+level*.15)));
     root.dataset.audioLevel=level.toFixed(3);
-  },destroy(){base.destroy();}};
+  },suspend(value){base.suspend(value);},destroy(){base.destroy();}};
 });
 registerBackgroundStyle('solid',({root,config})=>{root.style.background=`linear-gradient(130deg,${config.colors[0]},${config.colors[1]})`;return {destroy(){}};});
 registerBackgroundStyle('image',({root,config,onError})=>{
@@ -41,14 +41,14 @@ registerBackgroundStyle('image',({root,config,onError})=>{
 });
 registerBackgroundStyle('video',({root,config,epoch,onError})=>{
   const video=document.createElement('video');video.muted=true;video.loop=true;video.autoplay=true;video.playsInline=true;if(config.poster)video.poster=config.poster;video.src=config.src;video.style.objectFit=config.fit||'cover';
-  let alive=true;
-  const resume=()=>video.play().then(()=>{if(alive)onError('');}).catch(e=>{if(alive && e.name!=='AbortError')onError('背景影片播放受阻，請按控制台的「啟用播放」。');});
+  let alive=true,suspended=false;
+  const resume=()=>{if(suspended)return;return video.play().then(()=>{if(alive)onError('');}).catch(e=>{if(alive && e.name!=='AbortError')onError('背景影片播放受阻，請按控制台的「啟用播放」。');});};
   video.onloadedmetadata=()=>{if(Number.isFinite(video.duration) && video.duration>0)video.currentTime=((Date.now()-epoch)/1000)%video.duration;resume();};
   video.onerror=()=>onError('背景影片無法載入或格式不支援，請檢查素材。');root.append(video);
-  return {resume,destroy(){alive=false;video.onloadedmetadata=null;video.onerror=null;video.pause();video.removeAttribute('src');video.load();video.remove();}};
+  return {resume,suspend(value){suspended=value;if(value)video.pause();else resume();},destroy(){alive=false;video.onloadedmetadata=null;video.onerror=null;video.pause();video.removeAttribute('src');video.load();video.remove();}};
 });
 export class BackgroundManager {
-  constructor(host,onError=()=>{}){this.host=host;this.onError=onError;this.key='';this.exiting=new Set();}
+  constructor(host,onError=()=>{}){this.host=host;this.onError=onError;this.key='';this.exiting=new Set();this.suspended=false;}
   set(config,epoch,transition={type:'none',duration:0}){
     const key=JSON.stringify(config);
     if(this.key===key)return; // Changing foreground never resets the background or its video.
@@ -60,6 +60,7 @@ export class BackgroundManager {
     const factory=renderers.get(config.type);
     if(!factory){this.onError(`背景樣式 ${config.type} 尚未註冊播放器。`);this.instance=null;}
     else {this.onError('');this.instance=factory({root,config,epoch,onError:message=>{if(this.root===root)this.onError(message);}});}
+    this.instance?.suspend?.(this.suspended);
     const duration=transition.type==='fade'?transition.duration*1000:0;
     if(previousRoot && duration){
       const opacity=getComputedStyle(previousRoot).opacity;previousRoot.getAnimations().forEach(a=>a.cancel());
@@ -68,6 +69,7 @@ export class BackgroundManager {
       this.exiting.add(finish);previousRoot.animate([{opacity},{opacity:0}],{duration,easing:'ease-in-out'}).onfinish=finish;
     }else{previous?.destroy();previousRoot?.remove();}
   }
+  setSuspended(value){if(this.suspended===value)return;this.suspended=value;this.instance?.suspend?.(value);}
   resume(){this.instance?.resume?.();}
   audio(signal){this.instance?.audio?.(signal);}
   destroy(){for(const finish of this.exiting)finish();this.instance?.destroy();this.host.replaceChildren();this.key='';this.root=null;}

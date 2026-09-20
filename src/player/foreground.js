@@ -29,13 +29,15 @@ export class ForegroundManager {
     if(item.type==='image'){
       scene.classList.add('image-slide');const image=document.createElement('img');image.src=item.src;image.alt=item.alt||'';image.className=item.fit==='original'?'original':'contain';
       image.onload=()=>{if(this.current===scene)this.onError('');};image.onerror=()=>{if(this.current===scene)this.onError('圖片無法載入，請檢查路徑或選取素材資料夾。');};scene.append(image);
+    }else if(item.type==='web'){
+      scene.classList.add('web-placeholder');if(!active){const title=document.createElement('h1');title.textContent=item.label||'報告網頁';const hint=document.createElement('p');hint.textContent='請在投影視窗操作網頁';scene.append(title,hint);}
     }else if(item.layout==='roster'){
       scene.classList.add('roster-slide');const heading=document.createElement('h1');heading.textContent=item.heading;scene.append(heading);
       const columns=document.createElement('div');columns.className='roster-columns';
       const maxRows=Math.max(...item.columns.map(c=>c.rows.length));columns.style.setProperty('--roster-rows',maxRows);
       for(const column of item.columns){const panel=document.createElement('section');panel.className='roster-column';
         for(let i=0;i<column.rows.length;i++){const row=column.rows[i],entry=document.createElement('div');entry.className='roster-row';entry.style.gridRow=String(i+1);entry.style.gridColumn='2';
-          if(row.group){entry.classList.add('roster-group-row');if(i===0||column.rows[i-1].group!==row.group){let count=1;while(column.rows[i+count]?.group===row.group)count++;const label=document.createElement('div');label.className='roster-group-label';label.style.gridRow=`${i+1} / span ${count}`;for(const char of row.group){const letter=document.createElement('span');letter.textContent=char;label.append(letter);}panel.append(label);}}
+          if(row.group){entry.classList.add('roster-group-row');if(column.rows[i+1]?.group===row.group)entry.classList.add('roster-group-inner');if(i===0||column.rows[i-1].group!==row.group){let count=1;while(column.rows[i+count]?.group===row.group)count++;const label=document.createElement('div');label.className='roster-group-label';label.style.gridRow=`${i+1} / span ${count}`;for(const char of row.group){const letter=document.createElement('span');letter.textContent=char;label.append(letter);}panel.append(label);}}
           const role=document.createElement('span');role.textContent=row.role;const name=document.createElement('strong');name.textContent=row.name;entry.append(role,name);panel.append(entry);
         }columns.append(panel);
       }scene.append(columns);

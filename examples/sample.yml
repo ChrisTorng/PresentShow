@@ -41,8 +41,6 @@ pages:
       kind: youtube
       src: '{{music1}}'
       loop: true
-      loopTrimEnd: 20
-      loopFade: 1.5
       label: 晨間音樂（示範影片）
       autoTitle: false
   prayImage:
@@ -232,6 +230,15 @@ pages:
         text: 預備開始
       - kind: subtitle
         text: 安靜片刻，一起迎接今天
+  communion:
+    type: text
+    label: 共同分享
+    blocks: [{kind: title, text: 共同分享}]
+  announcements:
+    type: web
+    label: 活動消息
+    src: https://example.com/
+    transition: {type: none, duration: 0}
   responseSong:
     type: media
     label: 回應音樂
@@ -428,7 +435,16 @@ sections:
           2. 為需要幫助的人送上關懷。
 
           3. 約定下一次相聚。
+  - id: communion
+    title: 共同分享
+    bookends: false
+    sequence: [communion]
+  - id: announcements
+    title: 活動消息
+    bookends: false
+    sequence: [announcements]
   - id: response
+    startBlank: false
     title: 回應音樂
     background: dawn
     sequence:

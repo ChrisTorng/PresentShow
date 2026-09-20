@@ -63,7 +63,7 @@
 .media-cover{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#152329;opacity:.7}
 .media-card-slide .slide-content{position:relative;z-index:1;width:86%;background:#fffdf0e8}.media-card-slide .block.title{font-size:5cqw}
 #stage-error{display:none!important}
-#projection-capture{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;pointer-events:none}
+
 
 /* Readable transparent overlays and upper-positioned song titles. */
 .foreground .slide-content{background:rgba(255,253,244,.36)}
@@ -82,3 +82,20 @@
 .roster-group-row{border-left:.22cqw solid #799eab;background:#e1eff82b}
 
 .foreground.roster-slide{padding:1cqh 1.2cqw;gap:.6cqh}.roster-columns{gap:1.5cqw}.roster-column{display:grid;grid-template-columns:1em minmax(0,1fr);grid-template-rows:repeat(var(--roster-rows),minmax(0,1fr));column-gap:.15em;padding:.2cqw .3cqw;font-size:4cqw}.roster-row{font-size:4cqw;line-height:1.1;grid-template-columns:3.6em minmax(0,1fr);padding:0;align-items:center;gap:.25em}.roster-row span{font-size:.85em}.roster-group-label{grid-column:1;display:flex;flex-direction:column;justify-content:space-around;align-items:center;font-size:3.4cqw;line-height:1;margin:0;padding:0;border:0;color:#58707c}.roster-group-row{border-left:0;background:#d8e9f333}
+
+/* Manual shield never hides or reloads the running player underneath. */
+#manual-shield{position:absolute;inset:5px;z-index:6;background:#17232c;pointer-events:none;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#manual-shield[hidden],#web-layer[hidden]{display:none}
+#shield-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#17232c;opacity:.7}
+#shield-title{position:relative;color:white;background:#142a3ed9;border-radius:1vw;padding:1vw 2vw;font-size:4vw;text-align:center;max-width:85%}
+#web-layer{position:absolute;inset:0;background:#fff;z-index:4}#web-layer iframe{width:100%;height:100%;border:0;display:block}
+.web-active #ambient,.web-active #foreground{visibility:hidden}.web-placeholder{background:#f0f3f4;flex-direction:column;text-align:center}.web-placeholder h1{font-size:7cqw}.web-placeholder p{font-size:3cqw}
+.foreground.reading-slide .slide-content{justify-content:flex-start}
+/* Overlay the shared group label inside the role column under the first two characters of 敬拜主領. */
+.roster-group-label{grid-column:2;justify-self:start;width:1em;margin-left:1.3em;z-index:1;pointer-events:none}
+.roster-group-inner{border-bottom-color:transparent}
+
+.roster-group-label{margin-left:.74em}
+
+/* Keep the YouTube iframe at normal size/opacity; static foreground covers it. */
+.youtube-underlay #foreground{background:var(--quiet-background);}

@@ -1,3 +1,4 @@
+import {webURL} from './web.js';
 import {normalizeTransition} from './transitions.js';
 export function expandSequence(config,songs,backgrounds,defaultBackground){
   const items=[],sections=[];
@@ -20,13 +21,14 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
     change(section.startBackground ?? firstPage?.background ?? firstRef?.background ?? firstDefinition?.background ?? section.background,firstPage?.transition ?? firstRef?.transition ?? firstDefinition?.transition ?? section.transition);
     const bookends=section.bookends ?? config.bookends ?? !!config.sections;
     const boundary=edge=>push({id:`${id}-${edge}`,type:'blank',label:'',seconds:0,media:'stop'},{kind:'boundary',edge,sequence:-1,sub:null});
-    if(bookends && firstDefinition?.type!=='blank' && !(items.at(-1)?.type==='blank' && items.at(-1)?.background===currentBackground))boundary('start');
+    if(bookends && section.startBlank!==false && firstDefinition?.type!=='blank' && !(items.at(-1)?.type==='blank' && items.at(-1)?.background===currentBackground))boundary('start');
     const add=(ref,sequenceIndex,sub=null,group,seconds)=>{
       const pageId=typeof ref==='string'?ref:ref?.page,page=config.pages?.[pageId];
       if(!page)throw new Error(`找不到頁面：${pageId}`);
-      if(!['blank','text','image','media'].includes(page.type))throw new Error(`${pageId}：type 必須為 blank、text、image 或 media。`);
+      if(!['blank','text','image','media','web'].includes(page.type))throw new Error(`${pageId}：type 必須為 blank、text、image、media 或 web。`);
       if(page.layout==='roster' && (!Array.isArray(page.columns)||page.columns.some(c=>!Array.isArray(c.rows))))throw new Error(`${pageId}：服事表 columns 需要 rows。`);
       if(page.blocks && (!Array.isArray(page.blocks) || page.blocks.some(b=>!['eyebrow','title','subtitle','text','quote','account','caption','lyrics'].includes(b.kind) || typeof b.text!=='string')))throw new Error(`${pageId}：blocks 需指定有效的 kind 與文字 text。`);
+      if(page.type==='web'){webURL(page.src);if(page.originalURL)webURL(page.originalURL);}
       if(page.type==='image' && !page.src)throw new Error(`${pageId}：圖片需要 src。`);
       if(page.fit && !['contain','original'].includes(page.fit))throw new Error(`${pageId}：fit 請使用 contain 或 original。`);
       const duration=(typeof ref==='object'?ref.seconds:undefined) ?? seconds ?? page.seconds ?? 0;

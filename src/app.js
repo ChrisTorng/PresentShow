@@ -8,8 +8,8 @@ import {renderGrid,renderOutline} from './ui/grid.js';
 const $ = selector => document.querySelector(selector);
 const token = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 const preview = $('#preview'),nextPreview=$('#next-preview'),cues=new CueNavigation();
-let nextReady=false,nextRenderKey='',shield=false,captureStream=null;const stageErrors=new Map(),titleRequests=new Map();
-let popup = null, popupReady = false, previewReady = false, monitor=null,monitorReady=false;
+let nextReady=false,nextRenderKey='',shield=false;const stageErrors=new Map(),titleRequests=new Map();
+let popup = null, popupReady = false, previewReady = false;
 let raw, show, index=0, base=location.href, configSource='';
 let sourceText='',mediaRevision='',backgroundEpoch=Date.now(),backgroundKey='',songToolbarKey='';
 let assets=new Map(), objectUrls=[], playing=false, remaining=0, lastTick=performance.now();
@@ -20,9 +20,8 @@ nextPreview.src=`projector.html?preview=1&cue=1&session=${encodeURIComponent(tok
 function notice(text) { $('#notice').textContent=text;$('#notice').hidden=!text;clearTimeout(noticeTimer);if(text)noticeTimer=setTimeout(()=>$('#notice').hidden=true,10000); }
 const fmt = value => `${Math.floor((value||0)/60)}:${String(Math.floor((value||0)%60)).padStart(2,'0')}`;
 function post(target,type,data={}) {target?.postMessage({presentShow:token,type,...data},location.origin);}
-function monitoring(){return monitorReady && show?.items[index]?.track?.kind==='youtube';}
-function programTarget(){return monitoring()?monitor:popupReady?popup:preview.contentWindow;}
-function command(action,value){post(programTarget(),'command',{action,value});if(action==='shield'){if(popupReady)post(popup,'command',{action,value});post(preview.contentWindow,'command',{action,value});}}
+function programTarget(){return popupReady?popup:preview.contentWindow;}
+function command(action,value){post(programTarget(),'command',{action,value});if(action==='shield'&&popupReady)post(preview.contentWindow,'command',{action,value});}
 function effectiveItem(at=index){
   const item=structuredClone(show.items[at]);
   if(item.qr)item.qr=typeof item.qr==='string'?resolveAsset(item.qr,base,assets):{...item.qr,src:resolveAsset(item.qr.src,base,assets)};
@@ -40,15 +39,14 @@ function render(resume,crossfade=0) {
     const item=effectiveItem();
     const nextBackgroundKey=JSON.stringify(item.background);
     if(nextBackgroundKey!==backgroundKey){backgroundKey=nextBackgroundKey;backgroundEpoch=Date.now();}
-    const data={item,volume,resume:resume??0,playing:mediaWantsPlay,backgroundEpoch,crossfade,shield};
-    if(previewReady)post(preview.contentWindow,'render',{...data,active:!popupReady&&!monitoring()});
-    if(popupReady)post(popup,'render',{...data,active:!monitoring()});
-    if(monitorReady)post(monitor,'render',{...data,item:monitoring()?{...item,type:'media',layout:undefined,blocks:[]}:{...item,track:null},active:monitoring()});
+    const data={item,quietBackground:item.track?.kind==='youtube',volume,resume:resume??0,playing:mediaWantsPlay,backgroundEpoch,crossfade,shield};
+    if(previewReady)post(preview.contentWindow,'render',{...data,active:!popupReady});
+    if(popupReady)post(popup,'render',{...data,active:true});
   }catch(e){notice(e.message);}
 }
 function previewCue(){
   if(!show || !nextReady)return;
-  try{const at=cues.next(show.items,index),item=effectiveItem(at);const key=JSON.stringify(item);if(key!==nextRenderKey){nextRenderKey=key;post(nextPreview.contentWindow,'render',{item,active:false,playing:false,volume:0,backgroundEpoch, cue:true});}}catch(e){notice(e.message);}
+  try{const at=cues.next(show.items,index),item=effectiveItem(at);const quietBackground=show.items[index]?.track?.kind==='youtube';const key=JSON.stringify([item,quietBackground]);if(key!==nextRenderKey){nextRenderKey=key;post(nextPreview.contentWindow,'render',{item,quietBackground,active:false,playing:false,volume:0,backgroundEpoch, cue:true});}}catch(e){notice(e.message);}
 }
 function selectCue(at){const target=cues.click(at);if(target!==null)go(target);else update();}
 function takeNext(){go(cues.next(show.items,index));}
@@ -59,7 +57,6 @@ function go(next){
   const oldKey=previous?.track?.key;
   index=Math.max(0,Math.min(show.items.length-1,next));blackout=false;
   const item=show.items[index];remaining=item.seconds;playing=item.seconds>0 && item.autoStart!==false;lastTick=performance.now();stageErrors.clear();
-  if(item.track?.kind==='youtube' && item.track.key!==oldKey && $('#safe-start').checked)shield=true;
   if(item.track?.key!==oldKey){media={time:0,duration:0,playing:false,trackKey:item.track?.key||null};mediaWantsPlay=!!item.track;}
   render(undefined,crossfade);update();
   document.querySelector(`.slide-card[data-index="${index}"]`)?.scrollIntoView({block:'nearest'});
@@ -73,11 +70,13 @@ function update(){
   $('#timer-label').textContent=item.seconds?`${item.group || '自動換頁'} · ${Math.ceil(remaining)} 秒`:'手動換頁';
   $('#prev').disabled=index===0;$('#next').disabled=index===show.items.length-1 && cues.pending===null;
   const nextIndex=cues.next(show.items,index);$('#next-label').textContent=show.items[nextIndex].label;$('#cancel-cue').disabled=cues.pending===null;$('#next-preview').closest('.next-panel').classList.toggle('queued',cues.pending!==null);previewCue();
+  $('#countdown-number').closest('.countdown').hidden=!item.seconds;
   $('#countdown-number').textContent=item.seconds?`${remaining.toFixed(1)} 秒${playing?'':' · 暫停'}`:'手動換頁';
   $('#countdown-progress').value=item.seconds?1-remaining/item.seconds:0;$('#pause-countdown').disabled=!item.seconds;$('#pause-countdown').textContent=playing?'暫停倒數':'繼續倒數';
-  $('#operation-status').textContent=[...stageErrors.values(),monitoring()&&shield?'原始監看保持可見；投影已靜音遮蔽。':''].filter(Boolean).join(' · ');
+  $('#web-actions').hidden=item.type!=='web';
+  $('#operation-status').textContent=[...stageErrors.values(),shield?'手動靜音遮蔽中；投影四周保留 5px 原始畫面。':''].filter(Boolean).join(' · ');
   $('#panic').textContent=shield?'恢復聲音與畫面（F8）':'緊急靜音＋遮蔽（F8）';$('#panic').classList.toggle('engaged',shield);
-  syncCapture();
+
   $('#media-name').textContent=item.track?(item.track.label || item.label):'此頁沒有音樂或影片';
   $('#media-play').disabled=!item.track;$('#loop').disabled=!item.track;
   $('#loop').checked=item.track?.loop||false;
@@ -165,37 +164,17 @@ $('#prev').onclick=()=>go(index-1);$('#next').onclick=takeNext;$('#take-next').o
 function toggle(){if(show.items[index].seconds){playing=!playing;lastTick=performance.now();}else{mediaWantsPlay=!media.playing;command('play',mediaWantsPlay);}update();}
 $('#play').onclick=toggle;
 $('#pause-countdown').onclick=()=>{playing=!playing;lastTick=performance.now();update();};
-function panic(){if(shield&&monitoring()&&!captureStream){notice('請先分享 YouTube 監看視窗，才能恢復投影影音。');return;}shield=!shield;command('shield',shield);update();}
+function panic(){shield=!shield;command('shield',shield);update();}
 $('#panic').onclick=panic;
+$('#focus-web').onclick=()=>{if(popupReady)popup.focus();command('focus-web');};
+$('#open-web').onclick=()=>{const item=show?.items[index];if(item?.type==='web')window.open(item.originalURL||item.src,'_blank','noopener');};
 $('#enable-playback').onclick=()=>{command('enable');mediaWantsPlay=true;};
-$('#share-projector').onclick=async()=>{
- if(captureStream){captureStream.getTracks().forEach(t=>t.stop());captureStream=null;if(monitoring()){shield=true;command('shield',true);}$('#share-projector').textContent='分享監看分頁';update();return;}
- try{if(!navigator.mediaDevices?.getDisplayMedia)throw new Error('此網址無法分享畫面，請使用 localhost 或 HTTPS。');
- captureStream=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'browser'},audio:false});
- $('#projector-capture').srcObject=captureStream;await $('#projector-capture').play();$('#share-projector').textContent='停止畫面同步';
- captureStream.getVideoTracks()[0].onended=()=>{captureStream=null;if(monitoring()){shield=true;command('shield',true);}$('#share-projector').textContent='分享監看分頁';update();};update();
- }catch(e){notice(e.name==='NotAllowedError'?'尚未分享投影分頁；YouTube 預覽顯示封面與歌名。':e.message);}
-};
 $('#blank').onclick=()=>{blackout=!blackout;render();update();};
 $('#media-play').onclick=()=>{mediaWantsPlay=!media.playing;command('play',mediaWantsPlay);};
 $('#loop').onchange=e=>{const key=show.items[index].track?.key;show.items.forEach(item=>{if(item.track?.key===key)item.track.loop=e.target.checked;});command('loop',e.target.checked);};
 $('#volume').oninput=e=>{volume=Number(e.target.value);command('volume',volume);};
 $('#seek').oninput=e=>{media.time=Number(e.target.value);$('#elapsed').textContent=fmt(media.time);};
 $('#seek').onchange=e=>command('seek',Number(e.target.value));
-function syncCapture(){
- const item=show?.items[index];if(!item)return;
- const isYT=!blackout&&item.type==='media'&&item.track?.kind==='youtube';
- $('#projector-capture').hidden=!(captureStream&&isYT&&(monitoring()||popupReady));
- const next=show.items[cues.next(show.items,index)],nextVideo=$('#next-capture');if(nextVideo.srcObject!==captureStream)nextVideo.srcObject=captureStream;
- nextVideo.hidden=!(captureStream&&isYT&&next.type==='media'&&next.track?.key===item.track.key);
- if(captureStream&&!nextVideo.hidden&&nextVideo.paused)nextVideo.play().catch(()=>{});
- if(popupReady)try{const video=popup.document.querySelector('#projection-capture');if(video){if(video.srcObject!==captureStream)video.srcObject=captureStream;video.hidden=!(monitoring()&&captureStream&&isYT&&!shield);if(!video.hidden&&video.paused)video.play().catch(()=>{});}}catch{}
-}
-$('#open-monitor').onclick=()=>{
- if(monitor&&!monitor.closed){monitor.focus();return;}
- monitor=window.open(`projector.html?monitor=1&session=${encodeURIComponent(token)}`,`monitor-${token}`,'popup,width=960,height=540');
- if(!monitor)notice('請允許開啟 YouTube 監看視窗。');else notice('請分享新開的 YouTube 監看視窗；此視窗保留原始畫面，投影端可先靜音遮蔽。');
-};
 function openProjector(){
   if(popup && !popup.closed){popup.focus();return;}
   popupReady=false;
@@ -251,26 +230,27 @@ function key(key){
 document.addEventListener('keydown',e=>{if(!show || !$('#entry').hidden || document.querySelector('dialog[open]') || e.ctrlKey || e.metaKey || e.altKey || e.repeat || e.target.closest('input,textarea,select,[contenteditable]'))return;if(['ArrowLeft','ArrowRight',' ','Escape','F8'].includes(e.key) || SONG_KEYS.includes(e.key.toUpperCase())){e.preventDefault();key(e.key);}});
 window.addEventListener('message',event=>{
   if(event.origin!==location.origin || event.data?.presentShow!==token)return;
-  const isPreview=event.source===preview.contentWindow,isPopup=event.source===popup,isMonitor=event.source===monitor;
+  const isPreview=event.source===preview.contentWindow,isPopup=event.source===popup;
   if(event.source===nextPreview.contentWindow){if(event.data.type==='ready'){nextReady=true;nextRenderKey='';previewCue();}if(event.data.type==='error'){stageErrors.set('next:'+event.data.source,event.data.message);update();}return;}
-  if(!isPreview && !isPopup && !isMonitor)return;
+  if(!isPreview && !isPopup)return;
   const msg=event.data;
   if(msg.type==='ready'){
-    if(isMonitor){monitorReady=true;if(show?.items[index]?.track?.kind==='youtube')shield=true;$('#open-monitor').textContent='前往原始監看';}else if(isPopup){popupReady=true;$('#connection').textContent='投影視窗已連線';$('#open-projector').textContent='● 投影已連線 ↗';$('#open-projector').classList.add('connected');}else previewReady=true;
+    if(isPopup){popupReady=true;$('#connection').textContent='投影視窗已連線';$('#open-projector').textContent='● 投影已連線 ↗';$('#open-projector').classList.add('connected');}else previewReady=true;
     render(media.time);update();return;
   }
-  if(msg.type==='error'){stageErrors.set(`${isMonitor?'monitor':isPopup?'projector':'preview'}:${msg.source}`,msg.message);update();return;}
+  if(msg.type==='error'){stageErrors.set(`${isPopup?'projector':'preview'}:${msg.source}`,msg.message);update();return;}
   if(event.source!==programTarget())return;
-  if(msg.type==='status' && msg.trackKey===(show?.items[index]?.track?.key||null)){media=msg;if(isPopup||isMonitor)post(preview.contentWindow,'sync',{state:msg});if(show.items[cues.next(show.items,index)]?.track?.key===msg.trackKey)post(nextPreview.contentWindow,'sync',{state:msg});update();}
+  if(msg.type==='status' && msg.trackKey===(show?.items[index]?.track?.key||null)){media=msg;if(isPopup)post(preview.contentWindow,'sync',{state:msg});if(show.items[cues.next(show.items,index)]?.track?.key===msg.trackKey)post(nextPreview.contentWindow,'sync',{state:msg});update();}
   if(msg.type==='audio' && isPopup)post(preview.contentWindow,'audio',{signal:msg.signal});
   if(msg.type==='key')key(msg.key);
 });
 setInterval(()=>{
   const now=performance.now(),delta=(now-lastTick)/1000;lastTick=now;
+  // Display-only interpolation: never sends seeks, mute toggles or playback commands.
+  if(media.estimated&&media.playing){media.time=Math.min(media.duration||Infinity,media.time+delta);$('#elapsed').textContent=fmt(media.time);if(document.activeElement!==$('#seek'))$('#seek').value=media.time;}
   $('#clock').textContent=new Date().toLocaleTimeString('zh-TW',{hour12:false,hour:'2-digit',minute:'2-digit'});
-  if(monitor?.closed){monitor=null;monitorReady=false;captureStream?.getTracks().forEach(t=>t.stop());captureStream=null;if(show?.items[index]?.track?.kind==='youtube')shield=true;$('#open-monitor').textContent='原始 YouTube 監看';render(media.time);update();}
   if(popup?.closed){popup=null;popupReady=false;$('#connection').textContent='本機預覽';$('#open-projector').textContent='↗ 開啟投影視窗';$('#open-projector').classList.remove('connected');render(media.time);}
   if(show && playing && !blackout && !shield && remaining>0){remaining=Math.max(0,remaining-delta);if(remaining===0){const next=show.items[index].autoNext;if(cues.pending!==null || next!==null)go(cues.pending??next);else playing=false;}update();}
 },200);
-window.addEventListener('beforeunload',()=>{command('play',false);popup?.close();monitor?.close();captureStream?.getTracks().forEach(t=>t.stop());objectUrls.forEach(url=>URL.revokeObjectURL(url));});
+window.addEventListener('beforeunload',()=>{command('play',false);popup?.close();objectUrls.forEach(url=>URL.revokeObjectURL(url));});
 const initial=new URLSearchParams(location.search).get('config');if(initial){$('#config-url').value=initial;loadURL(initial);}
