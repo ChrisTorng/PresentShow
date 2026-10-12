@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f5ef">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="PresentShow 主唱介面設計原型：瀏覽歌曲、預備段落與五秒播放模擬。">
+  <title>PresentShow · 主唱介面</title>
+  <link rel="stylesheet" href="src/styles/singer.css">
+</head>
+<body>
+  <main class="singer-app" aria-label="PresentShow 主唱介面">
+    <header class="song-heading">
+      <button id="previous-song" class="icon-button song-arrow" aria-label="瀏覽上一首歌"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg></button>
+      <div class="song-title"><div class="heading-meta"><span id="song-number">01 / 03</span><span>PRESENTSHOW · 主唱</span></div><h1 id="song-title">高聲唱</h1></div>
+      <button id="next-song" class="icon-button song-arrow" aria-label="瀏覽下一首歌"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5 7 7-7 7"/></svg></button>
+      <button id="fullscreen" class="icon-button fullscreen-button" aria-label="進入全螢幕" title="全螢幕"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5"/></svg></button>
+    </header>
+
+    <nav id="song-tabs" class="song-tabs" aria-label="瀏覽歌曲（只切換畫面）"></nav>
+
+    <section class="live-status" aria-label="目前播放與預備下一段">
+      <div class="status-card current-status"><div class="status-label"><span class="status-dot"></span>目前播放<span id="current-song-short"></span></div><strong id="current-section"></strong></div>
+      <div class="status-card queued-status"><div class="status-label"><span class="status-dot"></span>預備下一段<span id="cue-source"></span></div><div class="queued-title"><strong id="queued-section"></strong><button id="cancel-cue" class="cancel-button" aria-label="取消主唱預備，恢復順序播放" title="取消預備" hidden>×</button></div><div id="cue-progress" class="cue-progress"></div></div>
+    </section>
+
+    <div class="section-heading"><span id="browse-hint">點段落預備 · 不會立即切換</span><button id="simulation" class="simulation-button" aria-label="暫停五秒播放模擬"><span id="simulation-label">模擬</span><b id="countdown">5s</b><span id="simulation-icon" aria-hidden="true">Ⅱ</span></button></div>
+    <section id="sections" class="section-buttons" aria-label="預備歌曲段落"></section>
+
+    <section class="utility-buttons" id="utility-buttons" aria-label="預備演唱提示"></section>
+    <div class="closing-buttons"><button id="cue-next-song"><span>下一首</span><small id="next-song-name"></small><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></button><button id="cue-end"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>結束</button></div>
+
+    <footer class="history-panel" aria-label="演唱路徑">
+      <div class="history-heading"><span>演唱路徑</span><span id="history-count">已唱 0 段</span></div>
+      <div id="history-past" class="history-past"></div>
+      <div class="history-live"><div class="history-current"><small>目前</small><strong id="history-current"></strong></div><span class="history-arrow" aria-hidden="true">→</span><div class="history-queued"><small>下一段</small><strong id="history-queued"></strong></div></div>
+    </footer>
+    <p id="announcement" class="sr-only" role="status" aria-live="polite"></p>
+  </main>
+
+  <aside class="design-notes" aria-label="設計說明與模擬控制">
+    <a class="desktop-brand" href="./"><span>▰</span> PresentShow <small>SINGER VIEW</small></a>
+    <p class="notes-eyebrow">主唱介面 / 畫面設計原型</p>
+    <h2>抬頭唱。<br>下一段，<span>由你決定。</span></h2>
+    <p class="notes-intro">偶爾低頭，就知道唱到哪裡。<br>點一下，讓投影預備好你的下一段。</p>
+    <div class="design-legend"><div><i class="legend-current"></i><span><strong>綠框 · 目前播放</strong><small>與 PresentShow 電腦端一致</small></span></div><div><i class="legend-queued"></i><span><strong>金框 · 預備下一段</strong><small>可隨時改選；倒數結束才播出</small></span></div></div>
+    <div class="palette-legend"><span class="verse-swatch">主歌</span><span class="prechorus-swatch">前副歌</span><span class="chorus-swatch">副歌</span><span class="tag-swatch">小副歌</span></div>
+    <section class="desktop-simulator"><div class="simulator-heading"><strong>試試電腦端預選</strong><span>本機模擬</span></div><p>先在這裡選段，再用左側主唱介面改選。</p><label for="computer-song">歌曲</label><select id="computer-song"></select><label for="computer-section">段落</label><div class="computer-cue-row"><select id="computer-section"></select><button id="computer-cue">預選</button></div><p id="computer-feedback" role="status">主唱預備後，優先依主唱的選擇。</p><div class="simulator-actions"><button id="reset-demo">重設示範</button><a href="./">開啟電腦主控台 ↗</a></div></section>
+    <p class="prototype-note">三首範例歌曲 · 每段模擬播放 5 秒<br>目前僅展示介面，尚未連線至電腦播放頁。</p>
+  </aside>
+
+  <dialog id="history-dialog"><div class="dialog-heading"><h2>已唱段落</h2><button id="close-history" class="icon-button" aria-label="關閉演唱紀錄">×</button></div><ol id="history-list"></ol><div class="history-pagination"><button id="history-previous" aria-label="上一頁紀錄">←</button><span id="history-page"></span><button id="history-next" aria-label="下一頁紀錄">→</button></div></dialog>
+  <script type="module" src="src/singer.js"></script>
+</body>
+</html>
