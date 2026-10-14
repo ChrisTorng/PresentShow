@@ -6,4 +6,5 @@ private/
 node_modules/
 test-results/
 dist/
+.vercel/
 .DS_Store

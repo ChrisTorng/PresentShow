@@ -20,11 +20,36 @@
 - `private/`、`*.private.json`、`*.private.yml`、`*.private.yaml` 由 `.gitignore` 排除。私人檔可在入口本機選檔，不需上傳。
 - 在本機可開啟 `http://localhost:4173/?config=private/20260920/church.private.yml` 使用私人設定。三首使用者提供的歌曲共有 27 個歌詞畫面，安排在聚會 2 正式開始之後，依八個項目分組，頁數隨內容及自動空白頁而定。私人 JSON 也已更新；之後建議只編輯 YAML，兩份檔案不會自動同步。
 - `npm run build` 只複製明確列出的程式及 `examples/` 到 `dist/`，不包含 `private/`。將 **dist 裡的內容** 上傳至 `http://christorng.idv.tw/PresentShow/`；不要直接上傳整個專案。Git 忽略不代表網頁伺服器禁止存取。
+- Vercel 使用 `vercel.json` 指定純靜態網站（Framework Preset：Other）、`npm run build` 與輸出目錄 `dist`，避免將瀏覽器程式誤判為 Node 服務。正式站台為 https://present-show.vercel.app/，主唱介面為 https://present-show.vercel.app/singer.html；之後預覽及分享皆使用 Vercel，不使用 raw.githack.com。
 - 直接載入範例：`http://christorng.idv.tw/PresentShow/?config=examples/sample.yml`。
-- 遠端設定：`?config=https%3A%2F%2Fexample.com%2Fmeeting.json`。跨網域來源須允許 CORS；HTTPS 不能抓 HTTP 設定。相對素材 URL 以設定檔網址為基準。
+- 遠端設定：`?config=https%3A%2F%2Fexample.com%2Fmeeting.json`。跨網域來源須允許 CORS；一般 HTTPS 頁面不能抓 HTTP 設定，本機 loopback 來源由瀏覽器的本機網路權限管理。相對素材 URL 以設定檔網址為基準。
 - 網頁不能用網址任意讀取 `C:\…` 或 `file://…`。請本機選檔，並「選取素材資料夾」。檔案不會上傳或永久儲存，重整後須重新選取。
 - 素材資料夾可包含 `media/song.mp3`、`images/logo.png`；設定檔使用相同相對路徑，選取共同根資料夾。不支援 `../` 跳出選取的資料夾。
 - 建議桌面 Chrome／Edge。HTTP 部署可使用選檔與資料夾輸入，不依賴需 HTTPS 的檔案系統 API。
+
+### 線上網站讀取本機私人設定與素材
+
+在專案目錄執行 `npm start`（修改伺服器後需重新啟動），再從 Vercel／GitHub Pages／個人網域的設定網址欄載入 `http://localhost:4173/private/20260920/church.private.yml`。也可直接開啟：
+
+https://present-show.vercel.app/?config=http%3A%2F%2Flocalhost%3A4173%2Fprivate%2F20260920%2Fchurch.private.yml
+
+請允許 Chrome／Edge 提示的「本機網路存取」權限；若已封鎖，請到該網站的網站權限修改後重新載入。公開網站需使用 HTTPS 才能取得這項權限。localhost 指開啟網頁的那台電腦，手機無法透過這個網址讀取電腦上的素材。
+
+本機伺服器只監聽 `127.0.0.1`，預設允許以下 origin 讀取（不含網站路徑）：
+
+- `https://present-show.vercel.app`、`https://present-show-christorngs-projects.vercel.app`、`https://present-show-git-main-christorngs-projects.vercel.app`
+- `https://christorng.github.io`（涵蓋其下所有 GitHub Pages 專案路徑）
+- `https://christorng.idv.tw`、`http://christorng.idv.tw`（HTTP 來源仍受瀏覽器安全限制）
+- 本機伺服器自己的 `http://localhost:<port>` 與 `http://127.0.0.1:<port>`
+
+支援 GET／HEAD／OPTIONS、影片 Range 請求及舊版 Private Network Access 預檢。其他 origin 回應 403。需要額外的 Vercel 預覽網域或其他個人網域時，以 PowerShell 設定完整 origin 清單再啟動：
+
+```powershell
+$env:PRESENTSHOW_CORS_ORIGINS = 'https://your-preview.vercel.app,https://www.your-domain.example'
+npm start
+```
+
+透過 localhost 網址載入 YAML 後，`pray/273480.jpg` 會解析為 `http://localhost:4173/private/20260920/pray/273480.jpg`，影片與 QR code 也依同樣規則解析。檔案由本機提供，不會上傳至網站主機。若使用「選取本機 YAML」按鈕，瀏覽器無法提供設定檔所在資料夾，需另外選取 `private/20260920` 素材資料夾；只選 YAML 會把未對應的相對素材網址解析到線上網站，導致 404。
 
 ## 編輯設定
 
@@ -223,13 +248,14 @@ sequence:
 
 ## 主唱手機介面（設計原型）
 
-開啟 `http://localhost:4173/singer.html`，或從首頁底部「主唱介面原型」進入。部署建置也會包含此頁。目前是獨立的畫面原型，使用三首範例歌曲及本機五秒播放模擬，尚未接入主控台、投影視窗或跨裝置同步。
+開啟 https://present-show.vercel.app/singer.html 或 `http://localhost:4173/singer.html`。目前是獨立的 UI 設計原型，尚未接入主控台、投影視窗或跨裝置同步。歌詞及空行分頁沿用提供的聚會設定；不包含私人設定或素材。
 
-- 手機直式一屏呈現歌名、三首歌曲導覽、播放／預備狀態、大段落按鈕、五個演唱提示、下一首／結束與演唱路徑；橫式改為雙欄。右上角可進入瀏覽器全螢幕。
-- 歌名箭頭與歌曲列只切換瀏覽畫面；任何段落、提示、下一首或結束按鈕都只預備，五秒播放週期結束才切換。可改選或取消預備，點倒數可暫停／繼續模擬。
-- 主歌為藍色、前副歌為藍紫色、副歌為紫色、小副歌為暖橙色；播放中沿用綠框 `#357357`，預備下一段沿用金框 `#d3a332`。重唱目前段落時同時顯示兩個色框。
-- 桌面寬螢幕旁附有「電腦端預選」模擬。電腦預選會顯示在手機畫面，主唱改選後保留主唱的預備段落，播出後解除優先權。這是同一頁內的示範，不會操作真正的電腦主控台。
-- 底部依序顯示最近唱過的段落；紀錄超過可用寬度時，點 `＋N` 分頁查看完整紀錄，主畫面不需捲動。
+- 歌曲數字使用 `1/3`。切換歌名只瀏覽該首的編排及歌詞，不切換目前播放。
+- 演唱路徑集中在上方三排：已唱過；前一個／目前／下一個／下下一個；之後。每次重複段落都有獨立項目，第一首採指定的 16 段順序，第二、三首有範例；尾奏接下一首前奏，第三首尾奏接結束。
+- 所有路徑、段落及歌詞頁按鈕都只預備；預覽內部倒數每五秒推進一頁，不提供秒數、模擬列或額外電腦面板。正式播放將由投影端回報換頁，預備線保留為設計示意。
+- 按大段落按鈕若與預計下一段相同，保留原順序；不同則在原下一段前插入，播出前改選會取代尚未播放的插入。點已唱過項目，會預備複製從該項到目前的已走過路徑；點目前項目可重唱。點未來項目預備跳到該處，略過項目不會被標為已唱過，仍可點選。
+- 已唱過項目使用淡字與段落代表色底線，未唱使用深字色框；目前歌詞頁與下一頁、下一段使用同段落色系的深淺框。寬螢幕並排多頁，窄螢幕橫滑閱讀，播放換頁會將目前歌詞頁帶入視野。段落播放完畢後恢復顯示第一頁。
+- 手機只使用預設順序，不提供編排編輯器；日後將由電腦端編排並同步。大按鈕平均填滿剩餘高度，字體隨高度縮放，歌詞可裁切但不提供直向捲動。頁次疊在歌詞右下角，上方目前項目僅顯示「目前 1/2」與段落名稱。
 
 ## 程式驗證
 

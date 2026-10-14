@@ -1,0 +1,14 @@
+# Upload only the public static-site source and build inputs.
+*
+!index.html
+!projector.html
+!singer.html
+!src
+!src/**
+!examples
+!examples/**
+!build.mjs
+!package.json
+!package-lock.json
+!vercel.json
+!LICENSE
