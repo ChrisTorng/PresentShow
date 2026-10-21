@@ -35,8 +35,11 @@ export function mountLeader({onState,onError=()=>{}}){
   if(!hasData||!client?.connected){status('未連線，無法控制主控');return;}
   if(!online){status('主控離線，無法切換');return;}
   const queued=sequence.cue,item=queued?sequence.route.find(e=>e.id===queued.id):sequence.nextSegment;
-  if(!item||item.end||item.utility||!Number.isInteger(item.section)){status('此項目不是主控的歌詞頁，暫無投影對應');return;}
-  client.send({type:'navigate',target:{songIndex:item.song,sectionIndex:item.section,page:queued?.page||0,routeIndex:sequence.route.findIndex(e=>e.id===item.id)}});
+  if(!item||item.end){status('此項目不是主控的歌詞頁，暫無投影對應');return;}
+  const routePage=queued?.page||0;
+  client.send({type:'navigate',target:{songIndex:item.song,sectionIndex:item.section??-1,utility:item.utility||null,
+    page:item.pageRefs?.[routePage]??routePage,routePage,
+    routeIndex:sequence.route.findIndex(e=>e.id===item.id)}});
  }
  refresh();if(validSyncRoom(roomInput.value.trim().toLowerCase())&&urlInput.value.trim())get('leader-connect').click();else open();
  return {navigate};

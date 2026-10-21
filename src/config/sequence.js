@@ -1,5 +1,6 @@
 import {webURL} from './web.js';
 import {normalizeTransition} from './transitions.js';
+import {arrangedSong} from './arrangement.js';
 export function expandSequence(config,songs,backgrounds,defaultBackground){
   const items=[],sections=[];
   let currentBackground=defaultBackground,currentTransition=normalizeTransition(config.transition);
@@ -48,11 +49,32 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
           seconds:0,media:entry.media,background:entry.background,transition:entry.transition},
           {sequence:sequenceIndex,kind:'song-title',sub:null});
         const lyricLines=song.pages.flatMap(p=>p.text.split('\n'));
-        song.pages.forEach((page,i)=>push({
-          id:`song-${song.id}-${i+1}`,type:'text',label:`${song.title} · ${page.sectionLabel}`,blocks:[{kind:'lyrics',text:page.text}],seconds:0,
-          lyricLines,lyricMaxLines:Math.max(...song.pages.map(p=>p.text.split('\n').length)),lyricStyle:entry.lyricStyle??metadata.lyricStyle??'panel',media:i===0 && !titlePage?entry.media:'keep',background:entry.backgroundAt?.[i+1] ?? (i===0?entry.background:undefined),transition:entry.transitionAt?.[i+1] ?? (i===0?entry.transition:undefined),
-          song:{...page,text:undefined,id:song.id,title:song.title,instance:`${sectionIndex}:${sequenceIndex}`,page:i+1}
-        },{sequence:sequenceIndex,kind:'song',sub:i}));
+        const arranged=arrangedSong(song,entry,entry.plan??config.leaderPlans?.[song.id]??config.leaderPlans?.[song.title]);
+        arranged.forEach(({source,utility,slot},i)=>{
+          const original=source ? song.pages.indexOf(source) : -1;
+          const common={seconds:0,lyricLines,
+            lyricMaxLines:Math.max(...song.pages.map(p=>p.text.split('\n').length)),
+            lyricStyle:entry.lyricStyle??metadata.lyricStyle??'panel',
+            media:i===0&&!titlePage?entry.media:'keep',
+            background:entry.backgroundSlots?.[slot+1]??(source?entry.backgroundAt?.[original+1]:undefined)??(i===0?entry.background:undefined),
+            transition:entry.transitionSlots?.[slot+1]??(source?entry.transitionAt?.[original+1]:undefined)??(i===0?entry.transition:undefined)};
+          if(utility){
+            const lastLine=song.pages.at(-1).text.split('\n').at(-1);
+            const tail=utility==='尾句';
+            push({...common,id:`song-${song.id}-utility-${slot}`,type:tail?'text':'blank',
+              label:`${song.title} · ${utility}`,
+              blocks:tail?[{kind:'lyrics',text:lastLine}]:[],
+              song:{...songInfo,utility,sectionLabel:utility,planSlot:slot}},
+              {sequence:sequenceIndex,kind:'song-utility',sub:null,slot});
+          }else{
+            push({...common,id:`song-${song.id}-${original+1}-at-${slot}`,type:'text',
+              label:`${song.title} · ${source.sectionLabel}`,
+              blocks:[{kind:'lyrics',text:source.text}],
+              song:{...source,text:undefined,id:song.id,title:song.title,
+                instance:`${sectionIndex}:${sequenceIndex}`,page:original+1,planSlot:slot}},
+              {sequence:sequenceIndex,kind:'song',sub:original,slot});
+          }
+        });
       }else if(entry && typeof entry==='object' && typeof entry.text==='string'){
         const paragraphs=entry.text.trim().split(/\n\s*\n/).filter(p=>p.trim());
         if(!paragraphs.length)throw new Error('文字項目不可為空。');
@@ -72,7 +94,7 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
     meta.end=items.length-1;
     const songItems=items.slice(meta.start,meta.end+1).filter(p=>p.song);
     if(songItems.length){
-      for(const [boundary,nearest] of [[items[meta.start],songItems[0]],[items[meta.end],songItems.at(-1)]])if(boundary.type==='blank')boundary.song={id:nearest.song.id,title:nearest.song.title,instance:nearest.song.instance,boundary:true};
+      for(const [boundary,nearest] of [[items[meta.start],songItems[0]],[items[meta.end],songItems.at(-1)]])if(boundary.type==='blank' && boundary.origin.kind!=='song-utility')boundary.song={id:nearest.song.id,title:nearest.song.title,instance:nearest.song.instance,boundary:true};
     }
     sections.push(meta);
   });

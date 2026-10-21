@@ -1,5 +1,14 @@
 const aliases={verse:'V',v:'V','主歌':'V','pre-chorus':'P',prechorus:'P','pre chorus':'P',p:'P','導歌':'P',chorus:'C',c:'C','副歌':'C',bridge:'B',b:'B','橋段':'B',intro:'I',i:'I',outro:'O',o:'O',tag:'T',t:'T',ending:'E',e:'E'};
 export const SONG_KEYS=['V','P','C','B','I','O','T','E'];
+const sectionChinese={V:'主歌',P:'前副歌',C:'副歌',B:'橋段',I:'前奏',O:'尾奏',T:'小副歌',E:'結尾'};
+export const compactSectionName=name=>String(name||'').replace(/\s+/g,'');
+export function displaySectionName(name, key, number, count=1) {
+  const base=sectionChinese[key] || name;
+  const stated=String(name||'').match(/(\d+)\s*$/);
+  const explicit=stated ? Number(stated[1]) : null;
+  // A numbered verse or chorus remains stable even if another segment is removed.
+  return base + ((explicit!==null || count>1) ? (explicit ?? number) : '');
+}
 export function parseSongs(source=''){
   if(typeof source!=='string')throw new Error('songs 請使用 | 多行純文字。');
   const songs=[];let song=null,lines=[],section='Verse',sectionKey='V',sectionId=0,first=true;
@@ -22,12 +31,27 @@ export function parseSongs(source=''){
   flush();
   for(const song of songs){
     if(!song.pages.length)throw new Error(`歌曲「${song.title}」沒有歌詞。`);
-    const counts={},groups=new Map();
+    const counts={},groups=new Map(),totals={};
     for(const page of song.pages){
-      if(!groups.has(page.sectionId)){const key=page.sectionKey||page.section;counts[key]=(counts[key]||0)+1;groups.set(page.sectionId,{number:counts[key],pages:[]});}
+      if(!groups.has(page.sectionId)){
+        const key=page.sectionKey||page.section;
+        counts[key]=(counts[key]||0)+1;
+        const number=Number(String(page.section).match(/(\d+)\s*$/)?.[1])||counts[key];
+        groups.set(page.sectionId,{number,key,name:page.section,pages:[]});
+        totals[key]=(totals[key]||0)+1;
+      }
       groups.get(page.sectionId).pages.push(page);
     }
-    for(const group of groups.values())group.pages.forEach((page,i)=>{page.sectionNumber=group.number;page.sectionPage=i+1;page.sectionPages=group.pages.length;page.sectionLabel=`${page.section} ${group.number}${group.pages.length>1?`-${i+1}`:''}`;});
+    for(const group of groups.values()){
+      const name=displaySectionName(group.name,group.key,group.number,totals[group.key]);
+      group.pages.forEach((page,i)=>{
+        page.sectionNumber=group.number;
+        page.sectionName=name;
+        page.sectionPage=i+1;
+        page.sectionPages=group.pages.length;
+        page.sectionLabel=name+(group.pages.length>1?` · ${i+1}/${group.pages.length}`:'');
+      });
+    }
   }
   return songs;
 }

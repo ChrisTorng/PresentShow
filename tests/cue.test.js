@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {compile} from '../src/config/model.js';
 import {CueNavigation} from '../src/ui/navigation.js';
 const raw={songs:'# Song\n[Verse]\nOne\n\nTwo\n\n[Chorus]\nThree\n\n[Verse]\nFour',sections:[{title:'Song',sequence:[{song:1}]},{title:'Reading',sequence:[{text:'First paragraph\n\nSecond paragraph'}]}],songMeta:{1:{title:'標題',english:'Title',credit:'Artist'}}};
-const {items}=compile(raw),first=items.findIndex(p=>p.song?.sectionLabel==='Verse 1-1'),second=items.findIndex(p=>p.song?.sectionLabel==='Verse 2');
+const {items}=compile(raw),first=items.findIndex(p=>p.song?.sectionLabel==='主歌1 · 1/2'),second=items.findIndex(p=>p.song?.sectionLabel==='主歌2');
 test('slow lowercase presses stage distinct verses and never take; fast repeat takes staged cue',()=>{
   const nav=new CueNavigation();assert.equal(nav.shortcut(items,first,'v',1000),null);assert.equal(nav.pending,second);
   assert.equal(nav.shortcut(items,first,'v',2000),null);assert.equal(nav.pending,first);
@@ -15,7 +15,7 @@ test('uppercase takes immediately; mouse requires two selections of the same car
   nav.click(4);nav.reset();assert.equal(nav.next(items,first),first+1);
 });
 test('cue targets stay in current song and continuation pages have no shortcut',()=>{
-  const nav=new CueNavigation();assert.equal(items[first+1].song.sectionStart,false);assert.equal(items[first+1].song.sectionLabel,'Verse 1-2');
+  const nav=new CueNavigation();assert.equal(items[first+1].song.sectionStart,false);assert.equal(items[first+1].song.sectionLabel,'主歌1 · 2/2');
   nav.click(items.length-1);assert.equal(nav.target(items,first,'v'),second);assert.equal(nav.shortcut(items,first,'b',0),null);
 });
 test('song titles retain credits, lyrics share width measurements, reading pages count paragraphs',()=>{

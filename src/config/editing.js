@@ -1,3 +1,5 @@
+import {songSections,defaultArrangement} from './arrangement.js';
+import {compactSectionName} from './songs.js';
 // Store a background cue at the exact sequence position, including a page inside a song.
 export function sequenceFor(raw,origin){return origin.section==null?raw.sequence:raw.sections[origin.section].sequence;}
 export function setBackgroundCue(raw,item,background){
@@ -9,8 +11,12 @@ export function setBackgroundCue(raw,item,background){
     list[sequence].background=background;
   }else if(kind==='reading'){
     list[sequence].backgroundAt={...list[sequence].backgroundAt,[sub+1]:background};
-  }else if(kind==='song'){
-    const entry=list[sequence];entry.backgroundAt={...entry.backgroundAt,[sub+1]:background};
+  }else if(kind==='song' || kind==='song-utility'){
+    const entry=list[sequence];
+    const hasPlan=entry.plan || next.leaderPlans?.[entry.song] || next.leaderPlans?.[String(entry.song)];
+    if(entry.arrangement||hasPlan||kind==='song-utility')
+      entry.backgroundSlots={...entry.backgroundSlots,[item.origin.slot+1]:background};
+    else entry.backgroundAt={...entry.backgroundAt,[sub+1]:background};
   }else if(kind==='group'){
     const ref=list[sequence].pages[sub];
     list[sequence].pages[sub]={...(typeof ref==='string'?{page:ref}:ref),background};
@@ -29,7 +35,19 @@ export function replaceSongText(raw,source,oldSongs,newSongs){
     const renamed=oldSongs.length===newSongs.length && atOldPosition && !oldSongs.some(s=>s.title===atOldPosition.title) ? atOldPosition:null;
     const song=newSongs.find(s=>s.title===old?.title) || renamed;
     if(!song)return [];
-    return [{...entry,song:song.id,backgroundAt:Object.fromEntries(Object.entries(entry.backgroundAt||{}).filter(([page])=>Number(page)<=song.pages.length)),transitionAt:Object.fromEntries(Object.entries(entry.transitionAt||{}).filter(([page])=>Number(page)<=song.pages.length))}];
+    let arrangement=entry.arrangement;
+    if(Array.isArray(arrangement)){
+      const previous=songSections(old),current=songSections(song);
+      arrangement=arrangement.flatMap(ref=>{
+        if(ref.utility)return [ref];
+        const i=previous.findIndex(s=>compactSectionName(s.name)===compactSectionName(ref.section));
+        const nextSection=current.find(s=>compactSectionName(s.name)===compactSectionName(ref.section))||current[i];
+        if(!nextSection||ref.page>nextSection.pages.length)return [];
+        return [{...ref,section:nextSection.name}];
+      });
+      if(!arrangement.length)arrangement=defaultArrangement(song);
+    }
+    return [{...entry,song:song.id,...(arrangement?{arrangement}:{}),backgroundAt:Object.fromEntries(Object.entries(entry.backgroundAt||{}).filter(([page])=>Number(page)<=song.pages.length)),transitionAt:Object.fromEntries(Object.entries(entry.transitionAt||{}).filter(([page])=>Number(page)<=song.pages.length))}];
   });
   if(next.sections){
     next.sections=next.sections.map(section=>({...section,sequence:update(section.sequence)})).filter(section=>section.sequence.length);

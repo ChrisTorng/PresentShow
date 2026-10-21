@@ -454,6 +454,13 @@ sections:
     background: dawn
     sequence:
       - main9
+# Optional performance arrangement. A segment may appear more than once while
+# its lyrics remain defined only once in "songs". English [Verse]/[Chorus]
+# markers are displayed in Chinese in both the controller and Leader screens.
+leaderPlans:
+  '1': 前奏-主歌1-副歌-主歌2-副歌-副歌-尾奏
+  '2': 前奏-主歌-副歌-主歌-副歌-尾奏
+  '3': 前奏-主歌-主歌-尾奏
 songMeta:
   '1':
     title: 迎向晨光

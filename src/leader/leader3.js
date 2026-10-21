@@ -245,12 +245,12 @@ document.fonts.ready.then(() => requestAnimationFrame(fitButtonText));
 
 const sync=mountLeader({onState:snapshot=>{
  if(!Array.isArray(snapshot.songs)||!snapshot.songs.length)return;
- songs=snapshot.songs;sequence=new SingerSequence(snapshot.plans,songs);
+ songs=snapshot.songs;sequence=new SingerSequence(snapshot.plans,songs,snapshot.route);
  const at=snapshot.active;
  if(at?.singing){
   const entry=sequence.route[at.routeIndex];
-  const match=entry?.song===at.songIndex&&entry?.section===at.sectionIndex;
-  let cursor=match?at.routeIndex:sequence.route.findIndex(e=>e.song===at.songIndex&&e.section===at.sectionIndex);
+  const match=entry?.song===at.songIndex&&(at.utility?entry.utility===at.utility:entry.section===at.sectionIndex);
+  let cursor=match?at.routeIndex:sequence.route.findIndex(e=>e.song===at.songIndex&&(at.utility?e.utility===at.utility:e.section===at.sectionIndex));
   if(cursor<0)cursor=0;
   sequence.cursor=cursor;sequence.page=Math.max(0,Math.min(at.page||0,pagesOf(sequence.current,songs).length-1));
   sequence.route.forEach((part,i)=>{part.visited=i<=cursor;});viewedSong=at.songIndex;

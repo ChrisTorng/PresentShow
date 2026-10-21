@@ -129,3 +129,72 @@ body.console-open{height:100dvh;overflow:hidden}
 .rail-sync .sync-actions button{font-size:11px;padding:6px 7px;flex:1}
 .rail-sync #sync-qr{margin:8px 0;min-height:128px}
 .rail-sync #sync-qr img,.rail-sync #sync-qr canvas{max-width:100%}
+
+
+/* Original PresentShow controller: top workspace and a vertically resizable dock. */
+#controller[hidden]{display:none!important}
+#controller{grid-template-rows:minmax(0,1fr) 9px var(--dock-height,34vh);gap:0}
+.console-layout{padding-bottom:7px;min-height:0}
+.dock-resize-handle{height:9px;min-height:9px;cursor:ns-resize;touch-action:none;user-select:none;z-index:6;position:relative;background:#e1e9e2;border-top:1px solid #c7d4c9;border-bottom:1px solid #c7d4c9}
+.dock-resize-handle::before{content:'';display:block;width:55px;height:3px;border-radius:5px;background:#809a8e;margin:2px auto}
+.dock-resize-handle:focus-visible{outline:3px solid #317155;outline-offset:-3px}
+.playback-dock{grid-template-columns:minmax(150px,.85fr) minmax(250px,1.12fr) minmax(360px,2fr);gap:10px;padding:6px 0 0;overflow:hidden}
+.playback-controls{display:block;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;padding:2px 3px}
+.playback-controls .playback-information{margin-bottom:6px}
+.playback-controls .transport{padding:2px 0 6px}
+.playback-controls .song-navigation{display:none!important}
+.program-panel{align-self:stretch}
+.next-panel,.next-panel.queued{display:flex;align-items:stretch;justify-content:stretch;min-width:0;background:#fbfcf9;border:3px solid #529071;outline:none;padding:0}
+.next-panel.queued{border-color:#d6a144;outline:none}
+.next-text-preview{display:flex;flex-direction:column;min-height:0;min-width:0;width:100%;height:100%;overflow:hidden;padding:12px 20px 14px;box-sizing:border-box;color:#1c3a30}
+.next-text-header{display:flex;gap:10px;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:#587263;min-height:22px}
+.next-text-header strong{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.next-part-label{display:block;margin:6px 0 7px;font-size:clamp(22px,2.6vw,41px);line-height:1.12;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1a704b}
+.next-lyric-lines{flex:1;min-width:0;min-height:0;line-height:1.21;white-space:pre-wrap;overflow:hidden;overflow-wrap:anywhere;font-size:26px;font-weight:750;letter-spacing:.012em}
+.next-text-preview[data-kind="chorus"]{border-left:8px solid #c9653f}
+.next-text-preview[data-kind="chorus"] .next-part-label{color:#aa4e32}
+.next-text-preview[data-kind="prechorus"]{border-left:8px solid #b68f32}
+.next-text-preview[data-kind="prechorus"] .next-part-label{color:#946a22}
+.next-text-preview[data-kind="instrumental"]{border-left:8px solid #7b89b4}
+.next-text-preview[data-kind="instrumental"] .next-part-label{color:#506393}
+.next-text-preview[data-kind="tag"]{border-left:8px solid #9464a0}
+.next-text-preview[data-kind="tag"] .next-part-label{color:#875391}
+.slide-card{cursor:pointer;overflow:visible!important;border:0;user-select:none;min-width:0}
+.slide-card .faithful-thumb{border-radius:7px}
+.slide-card.editing-selected{outline:3px solid #1b809b!important;outline-offset:1px!important}
+.slide-card .card-meta{border-radius:0 0 7px 7px}
+.song-part-label{position:absolute;top:4px;left:5px;max-width:calc(100% - 39px);padding:4px 8px;border-radius:5px;background:#f3fff4f2;color:#166547;font-size:clamp(15px,1.3vw,21px);line-height:1.12;font-weight:900;box-shadow:0 1px 5px #0003;z-index:5;pointer-events:none}
+.slide-card[data-lyric-kind="chorus"] .song-part-label{background:#fff0eaf5;color:#b04b30}
+.slide-card[data-lyric-kind="prechorus"] .song-part-label{background:#fff6d9f5;color:#916622}
+.slide-card[data-lyric-kind="instrumental"] .song-part-label{background:#f0f2fff5;color:#58669f}
+.slide-card[data-lyric-kind="tag"] .song-part-label{background:#faebfff5;color:#83468d}
+.card-menu{position:absolute;right:4px;top:4px;z-index:12;font-size:12px;min-width:30px}
+.card-menu summary{list-style:none;background:#fff;color:#244e43;border:1px solid #bccfbd;border-radius:6px;padding:1px 7px;cursor:pointer;box-shadow:0 1px 4px #0003;font-size:20px;line-height:21px;text-align:center}
+.card-menu summary::-webkit-details-marker{display:none}
+.card-menu[open]{background:#fff;border-radius:7px;box-shadow:0 6px 24px #0004;z-index:40}
+.slide-card:has(.card-menu[open]){z-index:20}
+.card-menu button{display:block;width:135px;text-align:left;padding:8px 10px;border:0;border-bottom:1px solid #e2eae3;border-radius:0;background:white;color:#244a3b;cursor:pointer;font-size:12px}
+.card-menu button:hover{background:#e8f2e9}
+@media(max-width:1200px){.playback-dock{grid-template-columns:minmax(150px,.8fr) minmax(220px,1.15fr) minmax(250px,1.8fr);gap:6px}.next-text-preview{padding:8px 12px}.next-part-label{font-size:clamp(20px,2.5vw,35px)}}
+@media(max-width:760px){.playback-dock{grid-template-columns:minmax(130px,.8fr) minmax(205px,1fr) minmax(225px,1.4fr);overflow-x:auto}.playback-controls{grid-column:auto;grid-row:auto;min-height:0}.next-panel,.program-panel{min-height:0}}
+
+
+/* Shared Leader 1/2/3 palette: color identifies the song segment, not a slide background. */
+.next-text-preview[data-kind="verse"]{--lyric-ink:#305681;--lyric-tint:#d7e7f5;--lyric-accent:#86a9c7}
+.next-text-preview[data-kind="prechorus"]{--lyric-ink:#5a518d;--lyric-tint:#e2def4;--lyric-accent:#a59acb}
+.next-text-preview[data-kind="chorus"]{--lyric-ink:#794580;--lyric-tint:#e9d6ed;--lyric-accent:#bb95c1}
+.next-text-preview[data-kind="tag"]{--lyric-ink:#91652b;--lyric-tint:#f6e3c8;--lyric-accent:#cfb17a}
+.next-text-preview[data-kind="instrumental"]{--lyric-ink:#5a725e;--lyric-tint:#e0e8da;--lyric-accent:#a0b193}
+.next-text-preview[data-kind]{border-left:8px solid var(--lyric-accent);background:#fff}
+.next-text-preview[data-kind] .next-part-label{color:var(--lyric-ink)}
+.next-panel:has([data-kind="verse"]){border-color:#86a9c7}
+.next-panel:has([data-kind="prechorus"]){border-color:#a59acb}
+.next-panel:has([data-kind="chorus"]){border-color:#bb95c1}
+.next-panel:has([data-kind="tag"]){border-color:#cfb17a}
+.next-panel:has([data-kind="instrumental"]){border-color:#a0b193}
+.next-panel.queued{outline:3px solid #d3a332;outline-offset:-3px}
+.slide-card[data-lyric-kind="verse"] .song-part-label{color:#305681;background:#d7e7f5f7}
+.slide-card[data-lyric-kind="prechorus"] .song-part-label{color:#5a518d;background:#e2def4f7}
+.slide-card[data-lyric-kind="chorus"] .song-part-label{color:#794580;background:#e9d6edf7}
+.slide-card[data-lyric-kind="tag"] .song-part-label{color:#91652b;background:#f6e3c8f7}
+.slide-card[data-lyric-kind="instrumental"] .song-part-label{color:#5a725e;background:#e0e8daf7}
