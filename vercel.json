@@ -2,5 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "buildCommand": "npm run build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "redirects": [
+    { "source": "/singer.html", "destination": "/src/leader/singer.html", "permanent": true },
+    { "source": "/singer1.html", "destination": "/src/leader/singer1.html", "permanent": true },
+    { "source": "/singer2.html", "destination": "/src/leader/singer2.html", "permanent": true },
+    { "source": "/singer3.html", "destination": "/src/leader/singer3.html", "permanent": true }
+  ]
 }

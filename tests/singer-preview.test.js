@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {openingLines, compactPartName} from '../src/singer-preview.js';
+import {openingLines, compactPartName} from '../src/leader/singer-preview.js';
 
 test('opening lyrics keep the first two lines when the first page has more lines', () => {
   assert.deepEqual(openingLines(['first\nsecond\nthird', 'later']), ['first', 'second']);

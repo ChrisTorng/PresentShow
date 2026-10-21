@@ -1,5 +1,5 @@
-import {defaultPlans, songs as prototypeSongs} from './singer-data.js';
-import {parsePlan} from './singer-sequence.js';
+import {defaultPlans, songs as prototypeSongs} from './leader/singer-data.js';
+import {parsePlan} from './leader/singer-sequence.js';
 
 const styleFor = (label, key) => {
   const name = String(label).replaceAll(' ', '').toLowerCase();

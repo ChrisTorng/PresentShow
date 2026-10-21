@@ -20,7 +20,7 @@
 - `private/`、`*.private.json`、`*.private.yml`、`*.private.yaml` 由 `.gitignore` 排除。私人檔可在入口本機選檔，不需上傳。
 - 在本機可開啟 `http://localhost:4173/?config=private/20260920/church.private.yml` 使用私人設定。三首使用者提供的歌曲共有 27 個歌詞畫面，安排在聚會 2 正式開始之後，依八個項目分組，頁數隨內容及自動空白頁而定。私人 JSON 也已更新；之後建議只編輯 YAML，兩份檔案不會自動同步。
 - `npm run build` 只複製明確列出的程式及 `examples/` 到 `dist/`，不包含 `private/`。將 **dist 裡的內容** 上傳至 `http://christorng.idv.tw/PresentShow/`；不要直接上傳整個專案。Git 忽略不代表網頁伺服器禁止存取。
-- Vercel 使用 `vercel.json` 指定純靜態網站（Framework Preset：Other）、`npm run build` 與輸出目錄 `dist`，避免將瀏覽器程式誤判為 Node 服務。正式站台為 https://present-show.vercel.app/，主唱介面為 https://present-show.vercel.app/singer.html；之後預覽及分享皆使用 Vercel，不使用 raw.githack.com。
+- Vercel 使用 `vercel.json` 指定純靜態網站（Framework Preset：Other）、`npm run build` 與輸出目錄 `dist`，避免將瀏覽器程式誤判為 Node 服務。正式站台為 https://present-show.vercel.app/，主唱介面為 https://present-show.vercel.app/src/leader/singer.html；之後預覽及分享皆使用 Vercel，不使用 raw.githack.com。
 - 直接載入範例：`http://christorng.idv.tw/PresentShow/?config=examples/sample.yml`。
 - 遠端設定：`?config=https%3A%2F%2Fexample.com%2Fmeeting.json`。跨網域來源須允許 CORS；一般 HTTPS 頁面不能抓 HTTP 設定，本機 loopback 來源由瀏覽器的本機網路權限管理。相對素材 URL 以設定檔網址為基準。
 - 網頁不能用網址任意讀取 `C:\…` 或 `file://…`。請本機選檔，並「選取素材資料夾」。檔案不會上傳或永久儲存，重整後須重新選取。
@@ -248,9 +248,11 @@ sequence:
 
 ## 主唱手機介面（設計原型）
 
-開啟 https://present-show.vercel.app/singer.html 或 `http://localhost:4173/singer.html`。目前是獨立的 UI 設計原型，尚未接入主控台、投影視窗或跨裝置同步。歌詞及空行分頁沿用提供的聚會設定；不包含私人設定或素材。
+四個 HTML 頁面、專用 JavaScript、共用歌曲資料與 `styles/` 樣式集中在 `src/leader/`，建置時保留相同目錄。Vercel 的舊 `/singer.html`、`/singer1.html`、`/singer2.html`、`/singer3.html` 網址會永久轉址到新位置；本機及其他靜態主機請使用新路徑。
 
-第一版也可由 `singer1.html` 開啟，與 `singer.html` 相同。區段標題、歌詞、狀態及頁次文字已放大，歌詞保留原始分行，右側超出時漸淡隱藏，不自動折行；原有多頁橫滑及預備操作仍可使用。第一版的放大樣式獨立於第二、三版。
+開啟 https://present-show.vercel.app/src/leader/singer.html 或 `http://localhost:4173/src/leader/singer.html`。目前是獨立的 UI 設計原型，尚未接入主控台、投影視窗或跨裝置同步。歌詞及空行分頁沿用提供的聚會設定；不包含私人設定或素材。
+
+第一版也可由 `src/leader/singer1.html` 開啟，與 `src/leader/singer.html` 相同。區段標題、歌詞、狀態及頁次文字已放大，歌詞保留原始分行，右側超出時漸淡隱藏，不自動折行；原有多頁橫滑及預備操作仍可使用。第一版的放大樣式獨立於第二、三版。
 
 有足夠高度時，第一版將大按鈕的一小部分留白分給「之後」與底部提示按鈕，讓兩排更高、字更大；大按鈕內的原字級維持不變。頁次使用與所在歌詞頁相同的不透明底色，覆蓋下方歌詞，避免文字重疊。
 
@@ -261,9 +263,9 @@ sequence:
 - 已唱過項目使用淡字與段落代表色底線，未唱使用深字色框；目前歌詞頁與下一頁、下一段使用同段落色系的深淺框。寬螢幕並排多頁，窄螢幕橫滑閱讀，播放換頁會將目前歌詞頁帶入視野。段落播放完畢後恢復顯示第一頁。
 - 手機只使用預設順序，不提供編排編輯器；日後將由電腦端編排並同步。大按鈕平均填滿剩餘高度，字體隨高度縮放，歌詞可裁切但不提供直向捲動。頁次疊在歌詞右下角，上方目前項目僅顯示「目前 1/2」與段落名稱。
 
-另一個手機排版原型位於 `singer2.html`，原版 `singer.html` 保留。第二版不顯示歌詞，也不提供頁面按鈕；整塊大按鈕用來預備段落，多頁段落以頁次顯示目前進度，未播放時回到第一頁。主歌左右並排在第一排、前副歌與副歌在第二排、小副歌在第三排，沒有小副歌時僅兩排；上方編排放大為三排，前一段併入已唱過區域。
+另一個手機排版原型位於 `src/leader/singer2.html`，原版 `src/leader/singer.html` 保留。第二版不顯示歌詞，也不提供頁面按鈕；整塊大按鈕用來預備段落，多頁段落以頁次顯示目前進度，未播放時回到第一頁。主歌左右並排在第一排、前副歌與副歌在第二排、小副歌在第三排，沒有小副歌時僅兩排；上方編排放大為三排，前一段併入已唱過區域。
 
-第三版 `singer3.html` 保留第二版的控制列與分組，區段名稱（如「主歌1」）與小字頁次靠上同列、分別靠左及靠右。整頁共用一致字級，標題最大、歌詞次之、頁次最小；跨歌曲共用字級基準，不會因單顆按鈕較寬就放大。歌詞固定為區段開頭：兩排按鈕顯示前兩行、三排顯示第一行，第一頁不足兩行時接第二頁開頭，不隨播放翻頁改變，只有頁次更新。歌詞維持不折行，右側超出的文字漸淡隱藏。整塊按鈕仍只預備區段。
+第三版 `src/leader/singer3.html` 保留第二版的控制列與分組，區段名稱（如「主歌1」）與小字頁次靠上同列、分別靠左及靠右。整頁共用一致字級，標題最大、歌詞次之、頁次最小；跨歌曲共用字級基準，不會因單顆按鈕較寬就放大。歌詞固定為區段開頭：兩排按鈕顯示前兩行、三排顯示第一行，第一頁不足兩行時接第二頁開頭，不隨播放翻頁改變，只有頁次更新。歌詞維持不折行，右側超出的文字漸淡隱藏。整塊按鈕仍只預備區段。
 
 頁次會依最長標題旁的剩餘寬度自動放大，整頁維持相同字級。按鈕多出的高度分配到標題上方、標題與歌詞之間及歌詞下方，較高的按鈕會有較多分區留白，兩行歌詞的行距保持緊密；短螢幕則先保留標題及歌詞可讀的高度。
 

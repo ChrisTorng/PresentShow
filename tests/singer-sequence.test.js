@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SingerSequence, parsePlan, nameOf, itemFor, pagesOf} from '../src/singer-sequence.js';
-import {defaultPlans} from '../src/singer-data.js';
+import {SingerSequence, parsePlan, nameOf, itemFor, pagesOf} from '../src/leader/singer-sequence.js';
+import {defaultPlans} from '../src/leader/singer-data.js';
 
 test('the supplied first-song arrangement preserves every repeated occurrence', () => {
   const sequence = new SingerSequence();
-  assert.equal(sequence.route.filter(item => item.song === 0).map(nameOf).join('-'), '前奏-主歌 1-前副歌-副歌-間奏-主歌 2-前副歌-副歌-副歌-間奏-小副歌-小副歌-副歌-副歌-尾句-尾奏');
+  assert.equal(sequence.route.filter(item => item.song === 0).map(item => nameOf(item)).join('-'), '前奏-主歌 1-前副歌-副歌-間奏-主歌 2-前副歌-副歌-副歌-間奏-小副歌-小副歌-副歌-副歌-尾句-尾奏');
   assert.equal(new Set(sequence.route.map(item => item.id)).size, sequence.route.length);
   assert.equal(sequence.current.utility, '前奏');
   assert.equal(sequence.route.at(-1).end, true);
@@ -61,7 +61,7 @@ test('jumping back stages a copy through the current occurrence without changing
   sequence.cueRoute(target);
   assert.equal(sequence.current.id, current);
   const copies = sequence.route.slice(sequence.cursor + 1, sequence.cursor + 3);
-  assert.deepEqual(copies.map(nameOf), ['主歌 1','前副歌']);
+  assert.deepEqual(copies.map(item => nameOf(item)), ['主歌 1','前副歌']);
   assert.ok(copies.every(item => item.repeated && !item.visited));
   assert.equal(sequence.route[sequence.cursor + 3].id, expected);
   sequence.advance();assert.equal(nameOf(sequence.current), '主歌 1');assert.notEqual(sequence.current.id, target);
@@ -93,7 +93,7 @@ test('arrangements can be edited during singing without replacing visited occurr
   const visited = sequence.route.slice(0, sequence.cursor + 1).map(item => item.id);
   sequence.editPlan(0, '前奏-主歌1-副歌 × 2-尾奏');
   assert.deepEqual(sequence.route.slice(0, sequence.cursor + 1).map(item => item.id), visited);
-  assert.deepEqual(sequence.route.slice(sequence.cursor + 1).filter(item => item.song === 0).map(nameOf), ['副歌','副歌','尾奏']);
+  assert.deepEqual(sequence.route.slice(sequence.cursor + 1).filter(item => item.song === 0).map(item => nameOf(item)), ['副歌','副歌','尾奏']);
   assert.equal(sequence.route.find(item => item.song === 1).utility, '前奏');
   assert.equal(sequence.route.at(-1).end, true);
   assert.throws(() => parsePlan(0, '不存在'));
