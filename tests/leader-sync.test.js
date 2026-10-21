@@ -43,10 +43,13 @@ test('Controller maps Leader page navigation and repeated segments to actual sli
  assert.equal(next.active.page,1);
  assert.equal(next.active.routeIndex,3);
  assert.equal(show.items[current].song.sectionPage,2);
- // Chorus returns to the same physical slide but moves to a later occurrence.
- main.pending={songIndex:0,sectionIndex:2,page:0,routeIndex:7};
- current=show.items.findIndex(item=>item.song?.id===1&&item.song?.sectionId===3&&item.song?.sectionPage===1);
+ // A repeated chorus now has a distinct physical slide in the controller.
+ // Both occurrences reference the same original lyric source.
+ const occurrences=show.items.map((item,i)=>({item,i})).filter(({item})=>item.song?.id===1&&item.song?.sectionId===3&&item.song?.sectionPage===1);
+ assert.ok(occurrences.length>=3);
+ current=occurrences[1].i;
  assert.equal(main.snapshot().active.routeIndex,7);
+ assert.equal(occurrences[0].item.blocks[0].text,occurrences[1].item.blocks[0].text);
  current=0;
  assert.equal(main.snapshot().active.singing,false);
 });
