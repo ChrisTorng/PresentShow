@@ -54,7 +54,7 @@ export function renderGrid({container,show,asset,onSelect,onReorder,onEdit}){
         card.append(menu);
       }
       if(item.group){const tag=document.createElement('span');tag.className='group-label';tag.textContent=`↻ ${item.group}`;card.append(tag);}
-      card.onclick=()=>onSelect(i);card.onkeydown=e=>{if(e.target===card&&(e.key==='Enter'||e.key===' ')){e.preventDefault();onSelect(i);}};
+      card.onclick=()=>onSelect(i);card.onkeydown=e=>{if(e.target===card&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();onSelect(i);}};
       card.ondragstart=e=>{dragging=i;e.dataTransfer.effectAllowed='copyMove';e.dataTransfer.setData('text/plain',String(i));};
       card.ondragover=e=>{if(dragging!==null){e.preventDefault();e.dataTransfer.dropEffect=e.ctrlKey?'copy':'move';card.classList.add('drag-over');}};card.ondragleave=()=>card.classList.remove('drag-over');
       card.ondragend=()=>{dragging=null;container.querySelectorAll('.drag-over').forEach(c=>c.classList.remove('drag-over'));};
