@@ -3,13 +3,14 @@ import {parseConfig,formatConfig} from './config/format.js';
 import {parseSongs,sectionTarget,SONG_KEYS} from './config/songs.js';
 import {BACKGROUND_STYLES,normalizeBackground} from './backgrounds/config.js';
 import {setBackgroundCue,replaceSongText,sequenceFor} from './config/editing.js';
+import {editArrangement,upgradeSongArrangements} from './config/arrangement.js';
 import {CueNavigation} from './ui/navigation.js';
 import {ControllerSync} from './leader/controller-sync.js';
 import {renderGrid,renderOutline} from './ui/grid.js';
 const $ = selector => document.querySelector(selector);
 const token = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-const preview = $('#preview'),nextPreview=$('#next-preview'),cues=new CueNavigation();
-let nextReady=false,nextRenderKey='',shield=false;const stageErrors=new Map(),titleRequests=new Map();
+const preview = $('#preview'),cues=new CueNavigation();
+let nextRenderKey='',shield=false,selectedPage=null;const stageErrors=new Map(),titleRequests=new Map();
 let popup = null, popupReady = false, previewReady = false;
 let raw, show, index=0, base=location.href, configSource='';
 let sourceText='',mediaRevision='',backgroundEpoch=Date.now(),backgroundKey='',songToolbarKey='';
@@ -18,7 +19,6 @@ let media={time:0,duration:0,playing:false,trackKey:null};
 let mediaWantsPlay=false, volume=80, blackout=false, dragging=null, noticeTimer;
 const leaderSync=new ControllerSync({getShow:()=>show,getRaw:()=>raw,getIndex:()=>index,onTake:i=>go(i)});
 preview.src=`projector.html?preview=1&session=${encodeURIComponent(token)}`;
-nextPreview.src=`projector.html?preview=1&cue=1&session=${encodeURIComponent(token)}`;
 function notice(text) { $('#notice').textContent=text;$('#notice').hidden=!text;clearTimeout(noticeTimer);if(text)noticeTimer=setTimeout(()=>$('#notice').hidden=true,10000); }
 const fmt = value => `${Math.floor((value||0)/60)}:${String(Math.floor((value||0)%60)).padStart(2,'0')}`;
 function post(target,type,data={}) {target?.postMessage({presentShow:token,type,...data},location.origin);}
@@ -46,11 +46,32 @@ function render(resume,crossfade=0) {
     if(popupReady)post(popup,'render',{...data,active:true});
   }catch(e){notice(e.message);}
 }
-function previewCue(){
-  if(!show || !nextReady)return;
-  try{const at=cues.next(show.items,index),item=effectiveItem(at);const quietBackground=show.items[index]?.track?.kind==='youtube';const key=JSON.stringify([item,quietBackground]);if(key!==nextRenderKey){nextRenderKey=key;post(nextPreview.contentWindow,'render',{item,quietBackground,active:false,playing:false,volume:0,backgroundEpoch, cue:true});}}catch(e){notice(e.message);}
+function fitNextLyrics(){
+  const panel=$('#next-text-preview'),lyrics=$('#next-lyric-lines');
+  if(!panel||!lyrics||!show)return;
+  const available=Math.max(30,panel.clientHeight-$('#next-text-header').offsetHeight-$('#next-part-label').offsetHeight-24);
+  let low=12,high=52;
+  for(let i=0;i<9;i++){
+    const size=(low+high)/2;
+    lyrics.style.fontSize=size+'px';
+    if(lyrics.scrollHeight<=available&&lyrics.scrollWidth<=lyrics.clientWidth+1)low=size;
+    else high=size;
+  }
+  lyrics.style.fontSize=Math.floor(low)+'px';
 }
-function selectCue(at){const target=cues.click(at);if(target!==null)go(target);else update();}
+function previewCue(){
+  if(!show)return;
+  const at=cues.next(show.items,index),item=show.items[at];
+  $('#next-song-title').textContent=item.song?.title||item.section?.title||'';
+  $('#next-part-label').textContent=item.song?.sectionLabel||item.song?.utility||item.label||'純背景';
+  $('#next-text-preview').dataset.kind=item.song?.utility?'instrumental':
+    item.song?.sectionKey==='C'?'chorus':item.song?.sectionKey==='P'?'prechorus':
+    item.song?.sectionKey==='T'?'tag':'verse';
+  $('#next-lyric-lines').textContent=item.blocks?.find(b=>b.kind==='lyrics')?.text
+    ||item.blocks?.map(b=>b.text).filter(Boolean).join('\n')||'';
+  requestAnimationFrame(fitNextLyrics);
+}
+function selectCue(at){selectedPage=at;const target=cues.click(at);if(target!==null)go(target);else update();}
 function takeNext(){go(cues.next(show.items,index));}
 function go(next){
   if(!show)return;
@@ -71,7 +92,7 @@ function update(){
   $('#play').textContent=(playing || media.playing)?'Ⅱ 暫停播放':'▶ 開始播放';
   $('#timer-label').textContent=item.seconds?`${item.group || '自動換頁'} · ${Math.ceil(remaining)} 秒`:'手動換頁';
   $('#prev').disabled=index===0;$('#next').disabled=index===show.items.length-1 && cues.pending===null;
-  const nextIndex=cues.next(show.items,index);$('#next-label').textContent=show.items[nextIndex].label;$('#cancel-cue').disabled=cues.pending===null;$('#next-preview').closest('.next-panel').classList.toggle('queued',cues.pending!==null);previewCue();
+  const nextIndex=cues.next(show.items,index);$('#next-label').textContent=show.items[nextIndex].label;$('#cancel-cue').disabled=cues.pending===null;$('.next-panel').classList.toggle('queued',cues.pending!==null);previewCue();
   $('#countdown-number').closest('.countdown').hidden=!item.seconds;
   $('#countdown-number').textContent=item.seconds?`${remaining.toFixed(1)} 秒${playing?'':' · 暫停'}`:'手動換頁';
   $('#countdown-progress').value=item.seconds?1-remaining/item.seconds:0;$('#pause-countdown').disabled=!item.seconds;$('#pause-countdown').textContent=playing?'暫停倒數':'繼續倒數';
@@ -102,7 +123,7 @@ function update(){
       }
     }
   }
-  $('#grid').querySelectorAll('.slide-card').forEach(card=>{const selected=Number(card.dataset.index)===index;card.classList.toggle('active',selected);card.setAttribute('aria-pressed',String(selected));});
+  $('#grid').querySelectorAll('.slide-card').forEach(card=>{const at=Number(card.dataset.index),selected=at===index;card.classList.toggle('active',selected);card.classList.toggle('editing-selected',at===selectedPage);card.setAttribute('aria-pressed',String(selected));});
   const targets=new Set(SONG_KEYS.map(key=>cues.target(show.items,index,key)).filter(i=>i!==null));
   $('#grid').querySelectorAll('.slide-card').forEach(card=>{const at=Number(card.dataset.index);card.classList.toggle('queued',nextIndex===at && at!==index);card.querySelector('.card-badge').classList.toggle('shortcut-next',targets.has(at));});
   $('#section-nav').querySelectorAll('button').forEach(button=>button.classList.toggle('active',Number(button.dataset.section)===item.section.index));
@@ -117,25 +138,57 @@ async function fetchTitles(compiled){
 }
 function grid(){
   $('#item-count').textContent=`${show.items.length} 個畫面`;
-  renderGrid({container:$('#grid'),show,asset:source=>resolveAsset(source,base,assets),onSelect:selectCue,onReorder:reorder});
+  renderGrid({container:$('#grid'),show,asset:source=>resolveAsset(source,base,assets),onSelect:selectCue,onReorder:reorder,onEdit:editSlide});
   renderOutline($('#section-nav'),show,(next,section)=>{selectCue(next);document.querySelector(`#section-${section}`).scrollIntoView({block:'start',behavior:'smooth'});});
 }
-function reorder(from,to){
-  // Reordering within a carousel preserves it; moving whole standalone items preserves other groups.
+function reorder(from,to,action='move'){
   const a=show.items[from].origin,b=show.items[to].origin;
-  if(a.section!==b.section || ['boundary','reading','song-title'].includes(a.kind) || ['boundary','reading','song-title'].includes(b.kind)){notice('跨項目排序請修改 YAML；項目空白頁會自動產生。');return;}
-  const list=sequenceFor(raw,a);
-  if(a.kind==='song' || b.kind==='song'){notice('歌曲分頁由空行決定，請在「編輯歌詞」調整；整首歌曲的順序可在 YAML sequence 修改。');return;}
-  if(a.sequence===b.sequence && a.kind==='group'){const pages=list[a.sequence].pages;pages.splice(b.sub,0,pages.splice(a.sub,1)[0]);}
-  else if(a.kind==='page' && b.kind==='page'){list.splice(b.sequence,0,list.splice(a.sequence,1)[0]);}
-  else {notice('輪播內可拖曳排序；跨輪播移動請用「編輯設定」調整 sequence，保留清楚的循環範圍。');return;}
-  applyRaw(raw);notice('順序已調整。請下載設定檔以保留修改。');
+  if(['song','song-utility'].includes(a.kind)&&['song','song-utility'].includes(b.kind)){
+    try{applyRaw(editArrangement(raw,show,a,action,b),undefined,true);notice(action==='copy'?'歌詞引用已複製。':'播放順序已調整。');}
+    catch(e){notice(e.message);}
+    return;
+  }
+  if(a.section!==b.section||['boundary','reading','song-title'].includes(a.kind)||['boundary','reading','song-title'].includes(b.kind)){
+    notice('跨項目排序請在 YAML 中調整 sequence。');return;
+  }
+  const next=structuredClone(raw),list=sequenceFor(next,a);
+  if(a.sequence===b.sequence&&a.kind==='group'&&b.kind==='group'){
+    const pages=list[a.sequence].pages;
+    if(action==='copy')pages.splice(b.sub+1,0,structuredClone(pages[a.sub]));
+    else pages.splice(b.sub,0,pages.splice(a.sub,1)[0]);
+  }else if(a.kind==='page'&&b.kind==='page'){
+    if(action==='copy')list.splice(b.sequence+1,0,structuredClone(list[a.sequence]));
+    else list.splice(b.sequence,0,list.splice(a.sequence,1)[0]);
+  }else{notice('這個位置不可拖曳編排。');return;}
+  applyRaw(next,undefined,true);notice(action==='copy'?'已複製播放引用。':'播放順序已調整。');
+}
+function editSlide(at,action){
+  if(!show?.items[at])return;
+  const origin=show.items[at].origin;
+  try{
+    if(['song','song-utility'].includes(origin.kind)){
+      applyRaw(editArrangement(raw,show,origin,action),undefined,true);
+    }else if(['page','group'].includes(origin.kind)){
+      const next=structuredClone(raw),list=sequenceFor(next,origin);
+      const pages=origin.kind==='group'?list[origin.sequence].pages:list;
+      const i=origin.kind==='group'?origin.sub:origin.sequence;
+      if(action==='delete'){
+        if(pages.length===1)throw Error('這個項目至少需要保留一頁。');
+        pages.splice(i,1);
+      }else if(action==='copy')pages.splice(i+1,0,structuredClone(pages[i]));
+      else if(action==='up'&&i>0)pages.splice(i-1,0,pages.splice(i,1)[0]);
+      else if(action==='down'&&i<pages.length-1)pages.splice(i+1,0,pages.splice(i,1)[0]);
+      applyRaw(next,undefined,true);
+    }else throw Error('這個頁面是自動產生的邊界或標題，請編輯 YAML 調整。');
+    selectedPage=null;
+    notice('播放編排已更新，原始歌詞維持單一來源。請下載設定檔保存。');
+  }catch(e){notice(e.message);}
 }
 function applyRaw(candidate,text,preserve=false){
   const currentOrigin=show?.items[index]?.origin;
   const compiled=compile(candidate);
   if(preserve && currentOrigin){const target=compiled.items.findIndex(item=>JSON.stringify(item.origin)===JSON.stringify(currentOrigin));index=target>=0?target:Math.min(index,compiled.items.length-1);}
-  cues.reset();nextRenderKey='';stageErrors.clear();raw=candidate;show=compiled;sourceText=text??formatConfig(raw);songToolbarKey='';
+  cues.reset();nextRenderKey='';stageErrors.clear();raw=candidate;show=compiled;sourceText=text??formatConfig(raw);songToolbarKey='';selectedPage=null;
   if(!preserve){index=0;playing=false;mediaWantsPlay=!!show.items[0].track;media={time:0,duration:0,playing:false,trackKey:null};remaining=show.items[0].seconds;playing=!!remaining && show.items[0].autoStart!==false;blackout=false;shield=false;mediaRevision=`${Date.now()}-${Math.random()}`;}
   // A new revision must reset previously loaded media even when its URL is unchanged.
   show.items.forEach(item=>{if(item.track)item.track.key=`${mediaRevision}:${item.track.key}`;});
@@ -152,7 +205,6 @@ async function loadURL(value){
   }catch(e){notice(`無法載入設定：${e.message}`);}
 }
 $('#sample').onclick=()=>loadURL('examples/sample.yml');
-$('#leader-sample').onclick=()=>loadURL('examples/leader-demo.json');
 $('#load-url').onclick=()=>loadURL($('#config-url').value.trim());
 $('#config-url').onkeydown=e=>{if(e.key==='Enter')$('#load-url').click();};
 $('#config-file').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const text=await file.text(),candidate=parseConfig(text);compile(candidate);base=location.href;configSource=file.name;applyRaw(candidate,text);}catch(err){notice(`設定檔錯誤：${err.message}`);}e.target.value='';};
@@ -187,6 +239,10 @@ function openProjector(){
 }
 $('#open-projector').onclick=openProjector;$('#focus-projector').onclick=openProjector;
 $('#back').onclick=()=>{playing=false;mediaWantsPlay=false;command('play',false);$('#controller').hidden=true;$('#entry').hidden=false;document.body.classList.remove('console-open');};
+$('#arrange-songs').onclick=()=>{
+  try{applyRaw(upgradeSongArrangements(raw,show),undefined,true);notice('已將所有歌曲展開為可編排的播放引用；重複播放仍只引用同一份歌詞。請下載 YAML 保存。');}
+  catch(e){notice(e.message);}
+};
 $('#edit').onclick=()=>{$('#config-text').value=sourceText;$('#editor-error').textContent='';$('#editor').showModal();};
 $('#close-editor').onclick=()=>$('#editor').close();
 $('#apply').onclick=()=>{try{const text=$('#config-text').value;applyRaw(parseConfig(text),text);$('#editor').close();notice('設定已套用；請下載保存修改。');}catch(e){$('#editor-error').textContent=e.message;}};
@@ -226,15 +282,16 @@ function key(key){
   if(key==='ArrowRight')takeNext();
   if(key===' ')toggle();
   if(key==='F8')panic();
-  if(key==='Escape'){cues.reset();update();}
+  if(key==='Escape'){cues.reset();selectedPage=null;update();}
+  if(key==='Delete')editSlide(selectedPage??index,'delete');
   if(SONG_KEYS.includes(key.toUpperCase())){const target=cues.shortcut(show.items,index,key,performance.now());if(target!==null)go(target);else update();}
 }
 
-document.addEventListener('keydown',e=>{if(!show || !$('#entry').hidden || document.querySelector('dialog[open]') || e.ctrlKey || e.metaKey || e.altKey || e.repeat || e.target.closest('input,textarea,select,[contenteditable]'))return;if(['ArrowLeft','ArrowRight',' ','Escape','F8'].includes(e.key) || SONG_KEYS.includes(e.key.toUpperCase())){e.preventDefault();key(e.key);}});
+document.addEventListener('keydown',e=>{if(!show || !$('#entry').hidden || document.querySelector('dialog[open]') || e.ctrlKey || e.metaKey || e.altKey || e.repeat || e.target.closest('input,textarea,select,[contenteditable]'))return;if(['ArrowLeft','ArrowRight',' ','Escape','F8','Delete'].includes(e.key) || SONG_KEYS.includes(e.key.toUpperCase())){e.preventDefault();key(e.key);}});
 window.addEventListener('message',event=>{
   if(event.origin!==location.origin || event.data?.presentShow!==token)return;
   const isPreview=event.source===preview.contentWindow,isPopup=event.source===popup;
-  if(event.source===nextPreview.contentWindow){if(event.data.type==='ready'){nextReady=true;nextRenderKey='';previewCue();}if(event.data.type==='error'){stageErrors.set('next:'+event.data.source,event.data.message);update();}return;}
+
   if(!isPreview && !isPopup)return;
   const msg=event.data;
   if(msg.type==='ready'){
@@ -243,7 +300,7 @@ window.addEventListener('message',event=>{
   }
   if(msg.type==='error'){stageErrors.set(`${isPopup?'projector':'preview'}:${msg.source}`,msg.message);update();return;}
   if(event.source!==programTarget())return;
-  if(msg.type==='status' && msg.trackKey===(show?.items[index]?.track?.key||null)){media=msg;if(isPopup)post(preview.contentWindow,'sync',{state:msg});if(show.items[cues.next(show.items,index)]?.track?.key===msg.trackKey)post(nextPreview.contentWindow,'sync',{state:msg});update();}
+  if(msg.type==='status' && msg.trackKey===(show?.items[index]?.track?.key||null)){media=msg;if(isPopup)post(preview.contentWindow,'sync',{state:msg});update();}
   if(msg.type==='audio' && isPopup)post(preview.contentWindow,'audio',{signal:msg.signal});
   if(msg.type==='key')key(msg.key);
 });
@@ -257,3 +314,30 @@ setInterval(()=>{
 },200);
 window.addEventListener('beforeunload',()=>{command('play',false);popup?.close();objectUrls.forEach(url=>URL.revokeObjectURL(url));});
 const initial=new URLSearchParams(location.search).get('config');if(initial){$('#config-url').value=initial;loadURL(initial);}
+
+const dockHandle=$('#dock-resize-handle');
+function setDockHeight(height){
+ const maximum=Math.max(170,$('#controller').clientHeight-140);
+ const value=Math.max(160,Math.min(maximum,Math.round(height)));
+ $('#controller').style.setProperty('--dock-height',value+'px');
+ localStorage.setItem('present-show-dock-height',String(value));
+ requestAnimationFrame(fitNextLyrics);
+}
+const savedDockHeight=Number(localStorage.getItem('present-show-dock-height'));
+if(Number.isFinite(savedDockHeight)&&savedDockHeight>0)setDockHeight(savedDockHeight);
+dockHandle.addEventListener('pointerdown',e=>{
+ if(e.button!==0)return;
+ e.preventDefault();dockHandle.setPointerCapture(e.pointerId);
+ const start=e.clientY,height=$('.playback-dock').getBoundingClientRect().height;
+ const move=event=>{if(event.pointerId===e.pointerId)setDockHeight(height+start-event.clientY);};
+ const finish=()=>{dockHandle.removeEventListener('pointermove',move);dockHandle.removeEventListener('pointerup',finish);dockHandle.removeEventListener('pointercancel',finish);};
+ dockHandle.addEventListener('pointermove',move);
+ dockHandle.addEventListener('pointerup',finish);
+ dockHandle.addEventListener('pointercancel',finish);
+});
+dockHandle.addEventListener('keydown',e=>{
+ if(e.key==='ArrowUp'||e.key==='ArrowDown'){
+  e.preventDefault();setDockHeight($('.playback-dock').getBoundingClientRect().height+(e.key==='ArrowUp'?28:-28));
+ }
+});
+new ResizeObserver(()=>{if(show)requestAnimationFrame(fitNextLyrics);}).observe($('#next-text-preview'));
