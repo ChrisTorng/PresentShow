@@ -1,0 +1,67 @@
+/* Keep singer2's grouping and controls; only the large buttons change here. */
+.part-button {
+  --part-padding: 8px;
+  --part-gap: 6px;
+  container-type: size;
+  grid-template-rows: max-content minmax(0, 1fr);
+  place-items: stretch;
+  gap: calc(var(--part-gap) + var(--part-separation, 0px));
+  padding: var(--part-padding);
+  padding-top: calc(var(--part-padding) + var(--part-top-space, 0px));
+  border-width: 3px;
+  text-align: left;
+}
+.part-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.05;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.part-heading strong {
+  flex: 0 0 auto;
+  font-size: var(--part-title-size, clamp(24px, 10.8vw, 46px));
+  line-height: inherit;
+  letter-spacing: 0;
+}
+.part-heading .part-page {
+  position: static;
+  flex: 0 0 auto;
+  font-size: var(--part-page-size, clamp(11px, 3.3vw, 14px));
+  line-height: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.section-lyrics {
+  container-type: size;
+  display: grid;
+  grid-template-rows: repeat(var(--lyric-lines), minmax(0, 1.16em));
+  grid-auto-rows: 0;
+  align-content: start;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  font-size: var(--part-lyrics-size, clamp(18px, 7.8vw, 34px));
+}
+.lyric-line {
+  display: block;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: left;
+  font-size: inherit;
+  font-weight: 650;
+  line-height: 1.16;
+}
+.lyric-line.is-truncated {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+}
+@media (max-height: 700px) {
+  .part-button { --part-padding: 6px; --part-gap: 4px; }
+}

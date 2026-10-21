@@ -1,5 +1,6 @@
 import {songs, utilities} from './singer-data.js';
 import {SingerSequence, samePart, nameOf, kindOf, pagesOf} from './singer-sequence.js';
+import {compactPartName} from './singer-preview.js';
 const $ = id => document.getElementById(id);
 const sequence = new SingerSequence();
 let viewedSong = 0;
@@ -85,7 +86,7 @@ function makeSection(section, sectionIndex) {
   card.className = `section-card ${section.kind}${current ? ' current-section' : ''}${nextSegment ? ' next-section' : ''}`;
   const name = document.createElement('button');name.className = 'section-name';name.dataset.section = sectionIndex;
   name.setAttribute('aria-label', `預備${section.name}`);
-  const title = document.createElement('strong');title.textContent = section.name;
+  const title = document.createElement('strong');title.textContent = compactPartName(section.name);
   const status = document.createElement('small');status.textContent = current && nextSegment ? '目前 · 下一段' : current ? '目前播放' : nextSegment ? '下一段' : '';
   name.append(title, status);
   name.addEventListener('click', () => stage(() => sequence.cueSection(item), `已預備${section.name}。`));
@@ -98,7 +99,11 @@ function makeSection(section, sectionIndex) {
     if (live) button.setAttribute('aria-current', 'true');
     button.setAttribute('aria-pressed', String(queued));
     button.setAttribute('aria-label', `預備${section.name}第 ${page + 1} 頁`);
-    const lyrics = document.createElement('span');lyrics.className = 'lyrics-text';lyrics.textContent = text;
+    const lyrics = document.createElement('span');lyrics.className = 'lyrics-text';
+    for (const textLine of text.split(/\r?\n/)) {
+      const line = document.createElement('span');line.className = 'lyrics-line';line.textContent = textLine;
+      lyrics.append(line);
+    }
     const number = document.createElement('small');number.className = 'page-number';number.textContent = `${page + 1}/${section.pages.length}`;
     button.append(lyrics, number);
     button.addEventListener('click', () => stage(() => sequence.cuePage(item, page), `已預備${section.name}第 ${page + 1} 頁。`));
@@ -107,6 +112,43 @@ function makeSection(section, sectionIndex) {
   const content = document.createElement('div');content.className = 'lyrics-content';content.append(scroller);
   card.append(name, content);
   return card;
+}
+function fitLargeButtonText() {
+  const sections = $('sections');
+  sections.style.removeProperty('--singer1-title-size');
+  sections.style.removeProperty('--singer1-lyrics-size');
+  const cards = [...sections.querySelectorAll('.section-card')];
+  // Resize the whitespace, keeping the type scale's original height budget.
+  const appStyle = getComputedStyle(document.querySelector('.singer-app'));
+  const footerGrowth = Math.max(0, parseFloat(getComputedStyle($('utility-buttons')).height) - parseFloat(appStyle.getPropertyValue('--singer1-footer-base')));
+  const donatedHeight = footerGrowth * 2 / cards.length;
+  const titleStyle = getComputedStyle(cards[0].querySelector('.section-name strong'));
+  const maximum = parseFloat(titleStyle.fontSize);
+  const measure = document.createElement('canvas').getContext('2d');
+  measure.font = `${titleStyle.fontWeight} ${maximum}px ${titleStyle.fontFamily}`;
+  const widest = Math.max(...songs.flatMap(song => song.sections.map(section => measure.measureText(compactPartName(section.name)).width)));
+  const titleSize = Math.min(maximum, ...cards.map(card => {
+    const name = card.querySelector('.section-name');
+    const style = getComputedStyle(name);
+    const status = name.querySelector('small');
+    const statusHeight = status.textContent ? status.getBoundingClientRect().height + parseFloat(style.rowGap) : 0;
+    const width = name.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 1;
+    const height = name.clientHeight + donatedHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - statusHeight;
+    return Math.min(maximum * width / widest, height / 1.08);
+  }));
+  sections.style.setProperty('--singer1-title-size', `${Math.max(0, Math.floor(titleSize * 10) / 10)}px`);
+  const lyricMaximum = parseFloat(getComputedStyle(sections.querySelector('.lyrics-text')).fontSize);
+  const lyricSize = Math.min(lyricMaximum, titleSize * .82, ...cards.flatMap((card, index) =>
+    [...card.querySelectorAll('.lyrics-page')].map((page, pageIndex) => {
+      const style = getComputedStyle(page);
+      const height = page.clientHeight + donatedHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      const lines = songs[viewedSong].sections[index].pages[pageIndex].split(/\r?\n/).length;
+      return height / lines / 1.14;
+    })));
+  sections.style.setProperty('--singer1-lyrics-size', `${Math.max(0, Math.floor(lyricSize * 10) / 10)}px`);
+  for (const line of sections.querySelectorAll('.lyrics-line, .section-name small')) {
+    line.classList.toggle('is-truncated', line.scrollWidth > line.clientWidth + 1);
+  }
 }
 function render() {
   const focused = document.activeElement;
@@ -139,6 +181,7 @@ function render() {
     return button;
   }));
   requestAnimationFrame(() => {
+    fitLargeButtonText();
     for (const scroller of document.querySelectorAll('.lyrics-pages')) {
       const section = Number(scroller.dataset.pages);
       const live = sequence.current.song === viewedSong && sequence.current.section === section;
@@ -162,6 +205,7 @@ $('fullscreen').onclick = async () => {
 document.addEventListener('fullscreenchange', () => $('fullscreen').setAttribute('aria-label', document.fullscreenElement ? '退出全螢幕' : '進入全螢幕'));
 document.addEventListener('visibilitychange', () => { lastTick = performance.now(); });
 window.addEventListener('resize', render);
+document.fonts.ready.then(() => requestAnimationFrame(fitLargeButtonText));
 setInterval(() => {
   const now = performance.now();const delta = now - lastTick;lastTick = now;
   if (document.hidden || (sequence.current.end && !sequence.cue)) return;

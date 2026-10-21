@@ -1,0 +1,80 @@
+/* First layout only: keep the multi-page controls and enlarge their contents. */
+.singer-app {
+  --singer1-control-growth: clamp(0px, calc((100dvh - 640px) * .06), 12px);
+  --singer1-footer-base: 40px;
+  grid-template-rows: 50px 32px calc(127px + var(--singer1-control-growth)) minmax(0, 1fr) calc(var(--singer1-footer-base) + var(--singer1-control-growth));
+}
+.route-panel { grid-template-rows: 28px 54px calc(29px + var(--singer1-control-growth)); }
+.route-row:last-child .row-label { font-size: 12px; }
+.route-row:last-child .route-item { min-height: calc(24px + var(--singer1-control-growth)); padding: 3px 8px; }
+.route-row:last-child .route-item strong { font-size: clamp(14px, 4.1vw, 17px); line-height: 1.1; }
+.route-row:last-child .route-item small { font-size: 10px; }
+.utility-buttons { container-type: inline-size; }
+.utility-button { font-size: clamp(18px, min(5.6vw, 7.5cqw), 23px); line-height: 1; }
+.section-card {
+  grid-template-columns: clamp(84px, 29vw, 128px) minmax(0, 1fr);
+  gap: 2px;
+  padding: 2px;
+}
+.section-card.current-section { padding: 1px; }
+.section-name { padding: 2px; gap: 3px; }
+.section-name strong {
+  flex-shrink: 0;
+  font-size: var(--singer1-title-size, clamp(22px, 9.2vw, 36px));
+  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+.section-name small, .page-number {
+  font-size: clamp(12px, 4.2vw, 17px);
+  line-height: 1.1;
+  font-weight: 750;
+}
+.section-name small { flex-shrink: 0; max-width: 100%; overflow: hidden; white-space: nowrap; }
+.lyrics-pages { gap: 4px; }
+.lyrics-page { --page-surface: var(--wash); padding: 2px 3px; }
+.lyrics-page.live-page { --page-surface: var(--tint); }
+.lyrics-page.next-page { --page-surface: color-mix(in srgb, var(--tint) 45%, var(--wash)); }
+.lyrics-page.live-page, .lyrics-page.next-page { padding: 1px 2px; }
+.lyrics-text {
+  font-size: var(--singer1-lyrics-size, clamp(18px, 7.3vw, 30px));
+  line-height: 1.14;
+  font-weight: 650;
+  overflow-wrap: normal;
+}
+.lyrics-line {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.lyrics-line.is-truncated, .section-name small.is-truncated {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 22px), transparent);
+}
+.page-number {
+  right: 3px;
+  bottom: 2px;
+  z-index: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: var(--page-surface);
+  opacity: 1;
+}
+@media (min-width: 700px) {
+  .singer-app { --singer1-footer-base: 44px; grid-template-rows: 56px 36px calc(131px + var(--singer1-control-growth)) minmax(0, 1fr) calc(var(--singer1-footer-base) + var(--singer1-control-growth)); }
+  .route-panel { grid-template-rows: 28px 58px calc(29px + var(--singer1-control-growth)); }
+  .lyrics-page { flex-basis: calc((100% - 4px) / 2); }
+}
+@media (min-width: 1100px) {
+  .lyrics-page { flex-basis: calc((100% - 8px) / 3); }
+}
+@media (max-height: 700px) {
+  .singer-app { --singer1-footer-base: 34px; grid-template-rows: 44px 28px calc(112px + var(--singer1-control-growth)) minmax(0, 1fr) calc(var(--singer1-footer-base) + var(--singer1-control-growth)); }
+  .route-panel { grid-template-rows: 24px 47px calc(25px + var(--singer1-control-growth)); }
+}
+@media (orientation: landscape) and (max-height: 550px) {
+  .singer-app { --singer1-footer-base: 32px; grid-template-rows: 46px 30px minmax(0, 1fr) var(--singer1-footer-base); }
+  .route-panel { grid-template-rows: 26px minmax(0, 1fr) 28px; }
+  .lyrics-page { flex-basis: 100%; }
+}
