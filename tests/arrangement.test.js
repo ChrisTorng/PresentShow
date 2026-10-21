@@ -27,7 +27,7 @@ test('section labels in English and Chinese become identical Chinese display nam
 });
 test('original controller expands repeat order without duplicating source lyrics',()=>{
  const show=compile(raw),pages=show.items.filter(item=>item.song&&!item.song.titlePage);
- assert.deepEqual(pages.map(item=>item.song.sectionLabel),['前奏','主歌1','副歌','主歌2','副歌','副歌','尾奏']);
+ assert.deepEqual(pages.map(item=>item.song.sectionLabel||item.song.utility),['前奏','主歌1','副歌','主歌2','副歌','副歌','尾奏']);
  assert.equal(show.songs[0].pages.length,3);
  assert.equal(show.items[0].blocks[0].text,'開始');
  assert.equal(show.items.at(-1).blocks[0].text,'結束');
