@@ -10,6 +10,7 @@ export class ControllerSync {
   get('sync-endpoint').value=localStorage.getItem('present-show-relay-url')||'';
   get('sync-room').value=localStorage.getItem('present-show-host-room')||'';
   get('sync-toggle').onclick=()=>this.client?this.disconnect():this.connect();
+  get('sync-variant').onchange=()=>this.renderInvite();
   get('sync-new-room').onclick=()=>{this.disconnect();localStorage.removeItem('present-show-host-room');localStorage.removeItem('present-show-host-key');get('sync-room').value='';this.renderInvite();this.status('已重設連線代碼');};
   get('sync-endpoint').addEventListener('change',()=>{try{localStorage.setItem('present-show-relay-url',normalizeEndpoint(get('sync-endpoint').value.trim()));}catch{}});
   this.renderInvite();
@@ -21,7 +22,8 @@ export class ControllerSync {
   if(!endpoint||!room)return;
   let base;
   try{base=normalizeEndpoint(endpoint);}catch{return;}
-  const url=new URL('./leader3.html',location.href);
+  const variant=['1','2','3'].includes(this.get('sync-variant').value)?this.get('sync-variant').value:'3';
+  const url=new URL('./leader'+variant+'.html',location.href);
   url.searchParams.set('room',room);url.searchParams.set('ws',base);
   this.get('sync-leader-link').value=url.href;
   const node=this.get('sync-qr');node.replaceChildren();

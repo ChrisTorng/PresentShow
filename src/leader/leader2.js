@@ -92,7 +92,7 @@ function makeSection(section, sectionIndex) {
     number.textContent = `${current ? sequence.page + 1 : 1}/${section.pages.length}`;
     button.append(number);
   }
-  button.addEventListener('click', () => stage(() => sequence.cueSection(item), `已預備${section.name}。`));
+  button.addEventListener('click', () => stage(() => (samePart(sequence.current,item) && sequence.page + 1 < pagesOf(sequence.current,songs).length ? sequence.cuePage(item,sequence.page + 1) : sequence.cueSection(item)), `已預備${section.name}。`));
   return button;
 }
 function renderSections() {
@@ -135,7 +135,7 @@ function render() {
     const item = {song:viewedSong, utility};const button = document.createElement('button');
     button.className = `utility-button${samePart(sequence.current, item) ? ' current' : ''}${samePart(sequence.nextSegment, item) ? ' queued' : ''}`;
     button.textContent = utility;button.setAttribute('aria-label', `預備${utility}`);
-    button.addEventListener('click', () => stage(() => sequence.cueSection(item), `已預備${utility}。`));
+    button.addEventListener('click', () => stage(() => (samePart(sequence.current,item) && sequence.page + 1 < pagesOf(sequence.current,songs).length ? sequence.cuePage(item,sequence.page + 1) : sequence.cueSection(item)), `已預備${utility}。`));
     return button;
   }));
   requestAnimationFrame(() => {

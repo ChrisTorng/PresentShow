@@ -23,8 +23,8 @@ export function leaderSnapshot(show, raw) {
       sections.at(-1).pages.push(page.text);
     }
     return {
-      title: song.title,
-      displayTitle: metadata.title || song.title,
+      title: metadata.title || song.title,
+      sourceTitle: song.title,
       sourceSongId: song.id,
       credit: metadata.credit || '',
       sections: sections.map(({sectionId,name,kind,pages}) => ({sectionId,name,kind,pages})),

@@ -91,7 +91,7 @@ function makeSection(section, sectionIndex) {
   const title = document.createElement('strong');title.textContent = compactPartName(section.name);
   const status = document.createElement('small');status.textContent = current && nextSegment ? '目前 · 下一段' : current ? '目前播放' : nextSegment ? '下一段' : '';
   name.append(title, status);
-  name.addEventListener('click', () => stage(() => sequence.cueSection(item), `已預備${section.name}。`));
+  name.addEventListener('click', () => stage(() => (samePart(sequence.current,item) && sequence.page + 1 < pagesOf(sequence.current,songs).length ? sequence.cuePage(item,sequence.page + 1) : sequence.cueSection(item)), `已預備${section.name}。`));
   const scroller = document.createElement('div');scroller.className = 'lyrics-pages';scroller.dataset.pages = sectionIndex;
   section.pages.forEach((text, page) => {
     const button = document.createElement('button');button.className = 'lyrics-page';button.dataset.page = page;
@@ -179,7 +179,7 @@ function render() {
     const item = {song:viewedSong, utility};const button = document.createElement('button');
     button.className = `utility-button${samePart(sequence.current, item) ? ' current' : ''}${samePart(sequence.nextSegment, item) ? ' queued' : ''}`;
     button.textContent = utility;button.setAttribute('aria-label', `預備${utility}`);
-    button.addEventListener('click', () => stage(() => sequence.cueSection(item), `已預備${utility}。`));
+    button.addEventListener('click', () => stage(() => (samePart(sequence.current,item) && sequence.page + 1 < pagesOf(sequence.current,songs).length ? sequence.cuePage(item,sequence.page + 1) : sequence.cueSection(item)), `已預備${utility}。`));
     return button;
   }));
   requestAnimationFrame(() => {
