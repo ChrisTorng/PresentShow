@@ -24,3 +24,6 @@ jobs:
           node --check src/leader/leader-sync.js
           node --check src/leader/leader-runtime.js
           node --check src/leader/controller-sync.js
+          node --check src/leader/leader1.js
+          node --check src/leader/leader2.js
+          node --check src/leader/leader3.js

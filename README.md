@@ -487,4 +487,6 @@ leaderPlans:
 
 WebSocket 使用 Durable Objects Hibernation，既不需要主控開放防火牆的入站 Port，也不需主控長時間維持 HTTP 輪詢。Worker 與靜態網站獨立部署，並不限定 GitHub Pages 或 Vercel。QR Code 使用瀏覽器載入的 qrcodejs CDN 函式庫於本機產生；CDN 無法載入時仍可複製網址手動開啟，邀請網址不會送給 QR Code API 服務。
 
+**資料傳輸說明：** 未啟用同步時，主控所載入的私人檔案不會送往同步服務。啟用後，歌曲歌詞、歌曲名稱、演唱順序與目前投影頁會經由加密 WebSocket 傳送到 Cloudflare Worker 並儲存在 Durable Object；其他非歌曲 YAML 設定、媒體檔案與主控密鑰不會出現在 Leader 快照。
+
 **部署狀態：** GitHub 的 Worker 程式碼不是 Cloudflare 的正式部署。需要在 Cloudflare 帳戶執行上面的 Wrangler 步驟，才能讓 WebSocket 實際互連。

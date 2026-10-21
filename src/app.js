@@ -152,6 +152,7 @@ async function loadURL(value){
   }catch(e){notice(`無法載入設定：${e.message}`);}
 }
 $('#sample').onclick=()=>loadURL('examples/sample.yml');
+$('#leader-sample').onclick=()=>loadURL('examples/leader-demo.json');
 $('#load-url').onclick=()=>loadURL($('#config-url').value.trim());
 $('#config-url').onkeydown=e=>{if(e.key==='Enter')$('#load-url').click();};
 $('#config-file').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const text=await file.text(),candidate=parseConfig(text);compile(candidate);base=location.href;configSource=file.name;applyRaw(candidate,text);}catch(err){notice(`設定檔錯誤：${err.message}`);}e.target.value='';};
