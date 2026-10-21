@@ -13,6 +13,15 @@
    <div class="rail-heading"><span>目前項目</span><span id="slide-position"></span></div><nav id="section-nav" aria-label="目前項目"></nav>
 
 
+   <details class="rail-sync"><summary>Leader 即時同步</summary>
+ <p class="hint">主控與所有 Leader 共用同一組連線代碼，透過 Cloudflare Durable Objects WebSocket 雙向同步。</p>
+ <label class="field-label" for="sync-endpoint">Cloudflare Worker 網址</label>
+ <input id="sync-endpoint" type="url" placeholder="https://present-show-sync.帳號.workers.dev" autocomplete="url">
+ <div class="sync-actions"><button id="sync-toggle" type="button">啟用同步</button><button id="sync-new-room" type="button">重設代碼</button></div>
+ <p id="sync-status" class="hint" role="status">尚未連線</p>
+ <label class="field-label" for="sync-room">連線代碼</label><input id="sync-room" readonly aria-label="連線代碼">
+ <div id="sync-invitation" hidden><label class="field-label" for="sync-leader-link">Leader 3 連線網址（可改用 Leader 1／2）</label><textarea id="sync-leader-link" readonly rows="3" aria-label="分享給 Leader 的網址"></textarea><div id="sync-qr" aria-label="Leader 3 連線 QR Code"></div></div>
+</details>
    <section class="rail-background"><label class="field-label" for="background-choice">從此頁切換背景</label><div class="background-row"><select id="background-choice"></select><button id="edit-background" title="調整顏色與動畫">調整</button></div><p id="background-info" class="hint"></p></section>
    <details class="rail-assets"><summary>素材與投影視窗</summary><label class="file-option compact">＋ 選取素材資料夾<input class="assets-input" type="file" webkitdirectory multiple></label><span class="asset-count hint">尚未選取素材</span><button id="focus-projector" class="wide">前往投影視窗 ↗</button></details>
   </aside>

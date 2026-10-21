@@ -119,3 +119,13 @@ body.console-open{height:100dvh;overflow:hidden}
 .playback-actions button,#web-actions button{font-size:11px;padding:6px;margin:3px}#web-actions .hint{margin:4px 0}
 
 .countdown[hidden]{display:none}
+
+.rail-sync{background:#e8f0ed;border:1px solid #c1d6cb;border-radius:10px;padding:10px;margin:8px 0;color:#29493b}
+.rail-sync summary{font-size:13px;font-weight:750;cursor:pointer}
+.rail-sync p{font-size:11px;line-height:1.5}
+.rail-sync input,.rail-sync textarea{display:block;width:100%;border:1px solid #a9bdb0;border-radius:6px;background:#fff;padding:6px;font-size:11px;box-sizing:border-box;color:#273c32}
+.rail-sync input[readonly]{background:#f4f6f2}
+.rail-sync .sync-actions{display:flex;gap:5px;margin-top:8px}
+.rail-sync .sync-actions button{font-size:11px;padding:6px 7px;flex:1}
+.rail-sync #sync-qr{margin:8px 0;min-height:128px}
+.rail-sync #sync-qr img,.rail-sync #sync-qr canvas{max-width:100%}

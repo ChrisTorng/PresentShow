@@ -4,6 +4,7 @@ import {parseSongs,sectionTarget,SONG_KEYS} from './config/songs.js';
 import {BACKGROUND_STYLES,normalizeBackground} from './backgrounds/config.js';
 import {setBackgroundCue,replaceSongText,sequenceFor} from './config/editing.js';
 import {CueNavigation} from './ui/navigation.js';
+import {ControllerSync} from './leader/controller-sync.js';
 import {renderGrid,renderOutline} from './ui/grid.js';
 const $ = selector => document.querySelector(selector);
 const token = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
@@ -15,6 +16,7 @@ let sourceText='',mediaRevision='',backgroundEpoch=Date.now(),backgroundKey='',s
 let assets=new Map(), objectUrls=[], playing=false, remaining=0, lastTick=performance.now();
 let media={time:0,duration:0,playing:false,trackKey:null};
 let mediaWantsPlay=false, volume=80, blackout=false, dragging=null, noticeTimer;
+const leaderSync=new ControllerSync({getShow:()=>show,getRaw:()=>raw,getIndex:()=>index,onTake:i=>go(i)});
 preview.src=`projector.html?preview=1&session=${encodeURIComponent(token)}`;
 nextPreview.src=`projector.html?preview=1&cue=1&session=${encodeURIComponent(token)}`;
 function notice(text) { $('#notice').textContent=text;$('#notice').hidden=!text;clearTimeout(noticeTimer);if(text)noticeTimer=setTimeout(()=>$('#notice').hidden=true,10000); }
@@ -58,7 +60,7 @@ function go(next){
   index=Math.max(0,Math.min(show.items.length-1,next));blackout=false;
   const item=show.items[index];remaining=item.seconds;playing=item.seconds>0 && item.autoStart!==false;lastTick=performance.now();stageErrors.clear();
   if(item.track?.key!==oldKey){media={time:0,duration:0,playing:false,trackKey:item.track?.key||null};mediaWantsPlay=!!item.track;}
-  render(undefined,crossfade);update();
+  render(undefined,crossfade);update();leaderSync.publish();
   document.querySelector(`.slide-card[data-index="${index}"]`)?.scrollIntoView({block:'nearest'});
 }
 function update(){
@@ -140,7 +142,7 @@ function applyRaw(candidate,text,preserve=false){
   $('#background-choice').replaceChildren();
   Object.entries(show.backgrounds).forEach(([id,bg])=>{const option=document.createElement('option');option.value=id;option.textContent=`${id} · ${BACKGROUND_STYLES[bg.type].label}`;$('#background-choice').append(option);});
   $('#entry').hidden=true;$('#controller').hidden=false;document.body.classList.add('console-open');$('#show-name').textContent=show.name;document.title=`${show.name} · PresentShow`;
-  $('#media-status').textContent='投影視窗開啟後，聲音只從投影視窗播放。';grid();render();update();fetchTitles(show);
+  $('#media-status').textContent='投影視窗開啟後，聲音只從投影視窗播放。';grid();render();update();leaderSync.publish();fetchTitles(show);
 }
 async function loadURL(value){
   try{
