@@ -177,3 +177,24 @@ body.console-open{height:100dvh;overflow:hidden}
 .card-menu button:hover{background:#e8f2e9}
 @media(max-width:1200px){.playback-dock{grid-template-columns:minmax(150px,.8fr) minmax(220px,1.15fr) minmax(250px,1.8fr);gap:6px}.next-text-preview{padding:8px 12px}.next-part-label{font-size:clamp(20px,2.5vw,35px)}}
 @media(max-width:760px){.playback-dock{grid-template-columns:minmax(130px,.8fr) minmax(205px,1fr) minmax(225px,1.4fr);overflow-x:auto}.playback-controls{grid-column:auto;grid-row:auto;min-height:0}.next-panel,.program-panel{min-height:0}}
+
+
+/* Shared Leader 1/2/3 palette: color identifies the song segment, not a slide background. */
+.next-text-preview[data-kind="verse"]{--lyric-ink:#305681;--lyric-tint:#d7e7f5;--lyric-accent:#86a9c7}
+.next-text-preview[data-kind="prechorus"]{--lyric-ink:#5a518d;--lyric-tint:#e2def4;--lyric-accent:#a59acb}
+.next-text-preview[data-kind="chorus"]{--lyric-ink:#794580;--lyric-tint:#e9d6ed;--lyric-accent:#bb95c1}
+.next-text-preview[data-kind="tag"]{--lyric-ink:#91652b;--lyric-tint:#f6e3c8;--lyric-accent:#cfb17a}
+.next-text-preview[data-kind="instrumental"]{--lyric-ink:#5a725e;--lyric-tint:#e0e8da;--lyric-accent:#a0b193}
+.next-text-preview[data-kind]{border-left:8px solid var(--lyric-accent);background:#fff}
+.next-text-preview[data-kind] .next-part-label{color:var(--lyric-ink)}
+.next-panel:has([data-kind="verse"]){border-color:#86a9c7}
+.next-panel:has([data-kind="prechorus"]){border-color:#a59acb}
+.next-panel:has([data-kind="chorus"]){border-color:#bb95c1}
+.next-panel:has([data-kind="tag"]){border-color:#cfb17a}
+.next-panel:has([data-kind="instrumental"]){border-color:#a0b193}
+.next-panel.queued{outline:3px solid #d3a332;outline-offset:-3px}
+.slide-card[data-lyric-kind="verse"] .song-part-label{color:#305681;background:#d7e7f5f7}
+.slide-card[data-lyric-kind="prechorus"] .song-part-label{color:#5a518d;background:#e2def4f7}
+.slide-card[data-lyric-kind="chorus"] .song-part-label{color:#794580;background:#e9d6edf7}
+.slide-card[data-lyric-kind="tag"] .song-part-label{color:#91652b;background:#f6e3c8f7}
+.slide-card[data-lyric-kind="instrumental"] .song-part-label{color:#5a725e;background:#e0e8daf7}
