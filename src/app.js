@@ -78,7 +78,7 @@ function go(next){
   cues.reset();
   const previous=show.items[index],crossfade=show.items[next]?.crossfade??previous?.exitCrossfade??0;
   const oldKey=previous?.track?.key;
-  index=Math.max(0,Math.min(show.items.length-1,next));blackout=false;
+  index=Math.max(0,Math.min(show.items.length-1,next));selectedPage=index;blackout=false;
   const item=show.items[index];remaining=item.seconds;playing=item.seconds>0 && item.autoStart!==false;lastTick=performance.now();stageErrors.clear();
   if(item.track?.key!==oldKey){media={time:0,duration:0,playing:false,trackKey:item.track?.key||null};mediaWantsPlay=!!item.track;}
   render(undefined,crossfade);update();leaderSync.publish();
