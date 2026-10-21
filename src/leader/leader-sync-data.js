@@ -18,7 +18,7 @@ export function leaderSnapshot(show, raw) {
     const sections = [];
     for (const page of song.pages) {
       if (!sections.length || sections.at(-1).sectionId !== page.sectionId) {
-        sections.push({sectionId:page.sectionId, name:page.section, kind:styleFor(page.section,page.sectionKey), pages:[]});
+        sections.push({sectionId:page.sectionId, name:page.sectionName||page.section, kind:styleFor(page.sectionName||page.section,page.sectionKey), pages:[]});
       }
       sections.at(-1).pages.push(page.text);
     }
@@ -38,5 +38,31 @@ export function leaderSnapshot(show, raw) {
     parsePlan(i,plan,result); // reject invalid plans before publishing
     return plan;
   });
-  return {schema:1, showName:show.name, songs:result, plans};
+  // A single authoritative route is generated from the very same slides shown
+  // on the controller, including repeated/removed/reordered lyric references.
+  const route=[];
+  let lastItem=-2;
+  for(let i=0;i<show.items.length;i++){
+    const item=show.items[i],part=item.song;
+    if(!part||part.titlePage||part.boundary){lastItem=-2;continue;}
+    const songIndex=show.songs.findIndex(s=>s.id===part.id);
+    if(songIndex<0)continue;
+    const sectionIndex=part.utility===undefined
+      ? result.songs[songIndex].sections.findIndex(s=>s.sectionId===part.sectionId):-1;
+    const utility=part.utility;
+    const sourcePage=Math.max(0,(part.sectionPage||1)-1);
+    const previous=route.at(-1);
+    const contiguous=i===lastItem+1&&sectionIndex>=0
+      &&previous?.song===songIndex&&previous.section===sectionIndex
+      &&!previous.utility&&sourcePage===previous.pageRefs.at(-1)+1;
+    if(contiguous){
+      previous.slideIndices.push(i);
+      previous.pageRefs.push(sourcePage);
+    }else route.push({
+      song:songIndex,...(utility?{utility}:{section:sectionIndex}),
+      slideIndices:[i],pageRefs:utility?[0]:[sourcePage]
+    });
+    lastItem=i;
+  }
+  return {schema:1, showName:show.name, songs:result, plans, route};
 }
