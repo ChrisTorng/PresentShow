@@ -1,0 +1,10 @@
+.leader-cover[hidden]{display:none!important}.leader-cover{position:fixed;inset:0;z-index:800;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(11,24,21,.88);color:#f5faf7}
+.leader-cover-card{max-width:420px;width:100%;padding:25px;border:1px solid #638a7d;border-radius:16px;background:#233c32;text-align:center;box-shadow:0 10px 30px #1118}
+.leader-cover h2{font-size:22px;margin:0 0 15px}.leader-cover p{font-size:15px;line-height:1.6}
+.leader-cover button,.leader-sync-dialog button{padding:10px 16px;border-radius:8px;border:1px solid #9cb9a9;background:#d6ecda;color:#244733}
+.leader-sync-chip{position:fixed;bottom:3px;right:5px;z-index:810;display:flex;align-items:center;gap:6px;font-size:10px;border:1px solid #889a8f;border-radius:10px;padding:2px 5px;background:#edf5ee;color:#234d36;box-shadow:0 2px 6px #0002;max-width:min(85vw,280px)}
+.leader-sync-chip.offline{background:#ffe9da;color:#7a3920}.leader-sync-chip button{background:none;border:0;font-size:13px;padding:1px}
+.leader-sync-dialog{border:1px solid #a4bbac;border-radius:15px;padding:22px;width:min(92vw,430px);color:#223e30;background:#f5f8f1;box-shadow:0 20px 70px #0006}
+.leader-sync-dialog::backdrop{background:#0009}.leader-sync-dialog h2{margin:0 0 12px;font-size:21px}.leader-sync-dialog label{display:grid;gap:6px;margin:12px 0;font-size:13px;font-weight:600}
+.leader-sync-dialog input{width:100%;font:inherit;border:1px solid #abbfb3;border-radius:8px;padding:9px;background:white}
+.leader-sync-dialog p{color:#a53424;min-height:1em}.leader-dialog-actions{display:flex;justify-content:flex-end;gap:8px}
