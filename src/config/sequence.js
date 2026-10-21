@@ -94,7 +94,7 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
     meta.end=items.length-1;
     const songItems=items.slice(meta.start,meta.end+1).filter(p=>p.song);
     if(songItems.length){
-      for(const [boundary,nearest] of [[items[meta.start],songItems[0]],[items[meta.end],songItems.at(-1)]])if(boundary.type==='blank')boundary.song={id:nearest.song.id,title:nearest.song.title,instance:nearest.song.instance,boundary:true};
+      for(const [boundary,nearest] of [[items[meta.start],songItems[0]],[items[meta.end],songItems.at(-1)]])if(boundary.origin.kind==='boundary')boundary.song={id:nearest.song.id,title:nearest.song.title,instance:nearest.song.instance,boundary:true};
     }
     sections.push(meta);
   });
