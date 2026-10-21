@@ -2,10 +2,15 @@
 *
 !index.html
 !projector.html
+!leader1.html
+!leader2.html
+!leader3.html
 !src
 !src/**
 !examples
 !examples/**
+!tests
+!tests/**
 !build.mjs
 !package.json
 !package-lock.json
