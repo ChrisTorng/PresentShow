@@ -17,6 +17,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - run: npm --prefix cloudflare install --no-audit --no-fund
+      - run: node integration/verify-cloudflare.mjs
       - run: |
           node --check cloudflare/worker.js
           node --check src/leader/leader-sync.js
