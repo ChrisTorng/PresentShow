@@ -454,3 +454,37 @@ YouTube 狀態只在播放器 ready/state-change 事件讀取，沒有定時 API
 報告網頁進入、載入及投影視窗重新取得焦點時會嘗試聚焦 iframe。只要目前是 web 頁，投影視窗完全不攔截鍵盤（包括方向鍵、空白與 F8），即使焦點落在外層也不會跳出報告。請從控制台換頁或啟動緊急遮蔽。Canva 是否接受投影筆按鍵仍由其網頁決定。
 
 YouTube 含延續音樂的圖片／服事表頁，一律改用原配色的靜態漸層；兩個預覽也不運作動態背景。播放器維持原尺寸、不透明且不重建，由靜態前景蓋住影片。結束 YouTube 段落才恢復設定的背景樣式。
+
+
+## Leader 1／2／3：Cloudflare WebSocket 多裝置同步
+
+已保留 `src/leader/singer1.html`、`singer2.html`、`singer3.html` 三種獨立 UI 原型，不再用 `src/leader/singer.html` 當 Leader。
+正式同步入口為：
+- `/leader1.html` → `src/leader/leader1.html`
+- `/leader2.html` → `src/leader/leader2.html`
+- `/leader3.html` → `src/leader/leader3.html`
+
+UI 專屬程式放在 `src/leader/leader1.js`、`leader2.js`、`leader3.js`，共用 `leader-runtime.js`、`leader-sync.js`、`leader-sync-data.js`。
+三個 Leader 接收的是主控 **實際載入 YAML／JSON 的歌曲內容**，預設順序依照原 Singer 測試資料；若有自己的歌詞，主控 YAML 可設定 `leaderPlans`：
+
+```yaml
+leaderPlans:
+  1: 前奏-主歌1-前副歌-副歌-間奏-主歌2-副歌-尾奏
+  2: 前奏-主歌-前副歌-副歌-尾奏
+  3: 前奏-主歌1-主歌2-副歌1-副歌2-尾奏
+```
+
+示範使用 `examples/leader-demo.json`（三首歌及原預設完整演唱順序）。主控的「Leader 即時同步」提供連線代碼和 QR Code。Leader 可在其他 Wi-Fi、4G/5G 網路連線，不需要知道教會內網 IP；任何能取得該連線代碼的人都可以操作歌詞換頁，因此不要公開分享邀請連結。
+
+### Cloudflare Worker 初次部署
+
+1. 建立 Cloudflare 帳戶，啟用 Workers 免費方案；在 `cloudflare` 目錄執行 `npm install`、`npx wrangler login`、`npx wrangler deploy`。
+2. `cloudflare/wrangler.toml` 已設定 SQLite Durable Object migration、Worker binding 與來源網域清單；若換新網域，請更新 `ALLOWED_ORIGINS` 後重新部署。若在 Cloudflare 有自訂網域，也可額外配置 Worker Route。
+3. 將部署後的網址（例如 `https://present-show-sync.<account>.workers.dev`）填入 PresentShow 主控左欄的「Leader 即時同步」；按「啟用同步」，複製代碼或掃 QR Code。
+4. Leader 開啟其中一種 `leaderN.html`。從 QR 進入時會自動帶入 Worker 網址及代碼；手動進入則需填入這兩項。
+5. 主控載入歌詞設定後，Leader 就會收到歌曲、段落、播放順序、目前歌詞頁。任一 Leader 點選段落或歌詞頁，會發送指令給主控，再由主控換頁並廣播給所有 Leader。新加入、重新連線都會收到 Durable Object 保存的最新快照。
+6. 主控停留在標題、開場、訊息、輪播等非歌詞頁時，Leader 顯示「目前不是唱歌階段」覆蓋畫面。部分 Singer 預設「前奏／間奏／尾奏」沒有對應的 PresentShow 歌詞投影片，目前這類提示只能預備，不能觸發主控換頁。
+
+WebSocket 使用 Durable Objects Hibernation，既不需要主控開放防火牆的入站 Port，也不需主控長時間維持 HTTP 輪詢。Worker 與靜態網站獨立部署，並不限定 GitHub Pages 或 Vercel。QR Code 使用瀏覽器載入的 qrcodejs CDN 函式庫於本機產生；CDN 無法載入時仍可複製網址手動開啟，邀請網址不會送給 QR Code API 服務。
+
+**部署狀態：** GitHub 的 Worker 程式碼不是 Cloudflare 的正式部署。需要在 Cloudflare 帳戶執行上面的 Wrangler 步驟，才能讓 WebSocket 實際互連。
