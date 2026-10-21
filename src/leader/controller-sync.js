@@ -63,48 +63,47 @@ export class ControllerSync {
  snapshot() {
   const show=this.getShow(),raw=this.getRaw();
   if(!show||!raw)return null;
-  const data=leaderSnapshot(show,raw),at=this.getIndex(),item=show.items[at];
+  const data=leaderSnapshot(show,raw),at=this.getIndex();
   let active={singing:false,slideIndex:at};
-  if(item?.song&&!item.song.titlePage&&!item.song.boundary&&item.song.sectionPage) {
-   const songIndex=show.songs.findIndex(s=>s.id===item.song.id);
-   const sectionIndex=data.songs[songIndex]?.sections.findIndex(s=>s.sectionId===item.song.sectionId)??-1;
-   if(songIndex>=0&&sectionIndex>=0) {
-    const page=item.song.sectionPage-1;
-    const route=data.plans.flatMap((plan,i)=>parsePlan(i,plan,data.songs));
-    let routeIndex=-1;
-    if(this.pending?.songIndex===songIndex&&this.pending.sectionIndex===sectionIndex&&this.pending.page===page){
-     const proposed=route[this.pending.routeIndex];
-     if(proposed?.song===songIndex&&proposed?.section===sectionIndex)routeIndex=this.pending.routeIndex;
-    }
-    const match=(r)=>r.song===songIndex&&r.section===sectionIndex;
-    if(routeIndex<0&&this.position?.songIndex===songIndex&&this.position.sectionIndex===sectionIndex){
-     if(page>0 || page===this.position.page)routeIndex=this.position.routeIndex;
-    }
-    if(routeIndex<0) {
-     routeIndex=route.findIndex((r,i)=>i>(this.position?.routeIndex??-1)&&match(r));
-     if(routeIndex<0)routeIndex=route.findIndex(match);
-    }
-    active={singing:true,slideIndex:at,songIndex,sectionIndex,page,routeIndex};
-   }
+  const routeIndex=data.route.findIndex(entry=>entry.slideIndices.includes(at));
+  if(routeIndex>=0){
+    const part=data.route[routeIndex],routePage=part.slideIndices.indexOf(at);
+    active={singing:true,slideIndex:at,songIndex:part.song,sectionIndex:part.section??-1,
+      utility:part.utility||null,page:routePage,routeIndex};
   }
-  this.pending=null;this.position=active.singing?active:null;
+  this.position=active.singing?active:null;
+  this.pending=null;
   return {...data,active};
  }
- publish() {
+ publish(){
   if(!this.client?.connected)return;
   try{const s=this.snapshot();if(s)this.client.send({type:'publish',snapshot:s});}
   catch(e){this.status('無法同步設定：'+e.message);}
  }
- navigate(target) {
+ navigate(target){
   const show=this.getShow(),raw=this.getRaw();
   if(!show||!raw)return;
   try{
-   const data=leaderSnapshot(show,raw),song=show.songs[target.songIndex],section=data.songs[target.songIndex]?.sections[target.sectionIndex];
-   if(!song||!section||target.page>=section.pages.length)return;
-   const index=show.items.findIndex(item=>item.song?.id===song.id&&!item.song.boundary&&!item.song.titlePage
-    &&item.song.sectionId===section.sectionId&&item.song.sectionPage===target.page+1);
-   if(index<0){this.status('該歌曲段落不在主控播放流程中');return;}
-   this.pending=target;this.onTake(index);
+    const data=leaderSnapshot(show,raw);
+    let index=-1;
+    const planned=data.route[target.routeIndex];
+    const same=planned?.song===target.songIndex &&
+      (target.utility ? planned.utility===target.utility : planned.section===target.sectionIndex);
+    if(same){
+      const routePage=Number.isInteger(target.routePage)?target.routePage:
+        planned.pageRefs.indexOf(target.page);
+      index=planned.slideIndices[routePage]??-1;
+    }
+    if(index<0){
+      const source=show.songs[target.songIndex],section=data.songs[target.songIndex]?.sections[target.sectionIndex];
+      if(!source)return;
+      index=show.items.findIndex(item=>item.song?.id===source.id
+        &&!item.song.titlePage&&!item.song.boundary
+        &&(target.utility?item.song.utility===target.utility:
+          item.song.sectionId===section?.sectionId&&item.song.sectionPage===target.page+1));
+    }
+    if(index<0){this.status('指定段落不在主控的播放編排中');return;}
+    this.pending=target;this.onTake(index);
   }catch(e){this.status('切換失敗：'+e.message);}
  }
 }
