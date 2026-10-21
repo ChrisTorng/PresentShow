@@ -158,7 +158,7 @@ window.addEventListener('resize', render);
 
 const sync=mountLeader({onState:snapshot=>{
  if(!Array.isArray(snapshot.songs)||!snapshot.songs.length)return;
- songs=snapshot.songs;sequence=new SingerSequence(snapshot.plans,songs);
+ songs=snapshot.songs;sequence=new SingerSequence(snapshot.plans,songs,snapshot.route);
  const at=snapshot.active;
  if(at?.singing){
   const entry=sequence.route[at.routeIndex];
