@@ -7,7 +7,7 @@ export class ControllerSync {
   this.getShow=getShow;this.getRaw=getRaw;this.getIndex=getIndex;this.onTake=onTake;
   this.client=null;this.position=null;this.pending=null;
   const get=id=>document.getElementById(id);this.get=get;
-  get('sync-endpoint').value=localStorage.getItem('present-show-relay-url')||'';
+  get('sync-endpoint').value=localStorage.getItem('present-show-relay-url')||'https://present-show-sync.christorng.workers.dev';
   get('sync-room').value=localStorage.getItem('present-show-host-room')||'';
   get('sync-toggle').onclick=()=>this.client?this.disconnect():this.connect();
   get('sync-variant').onchange=()=>this.renderInvite();
