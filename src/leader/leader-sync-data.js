@@ -54,7 +54,7 @@ export function leaderSnapshot(show, raw) {
     const songIndex=show.songs.findIndex(s=>s.id===part.id);
     if(songIndex<0)continue;
     const sectionIndex=part.utility===undefined
-      ? result.songs[songIndex].sections.findIndex(s=>s.sectionId===part.sectionId):-1;
+      ? result[songIndex].sections.findIndex(s=>s.sectionId===part.sectionId):-1;
     const utility=part.utility;
     const sourcePage=Math.max(0,(part.sectionPage||1)-1);
     const previous=route.at(-1);
