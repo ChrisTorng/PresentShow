@@ -30,16 +30,17 @@ export function kindOf(item, catalog = songs) {
 }
 export function pagesOf(item, catalog = songs) {
   if (!item || item.end) return ['演唱結束'];
+  if (item.pageRefs && !item.utility) return item.pageRefs.map(page=>catalog[item.song].sections[item.section].pages[page]);
   if (item.utility === '尾句') return [catalog[item.song].sections.at(-1).pages.at(-1)];
   return item.utility ? [item.utility] : catalog[item.song].sections[item.section].pages;
 }
 
 export class SingerSequence {
-  constructor(plans = defaultPlans, catalog = songs) {
+  constructor(plans = defaultPlans, catalog = songs, liveRoute = null) {
     this.catalog = catalog;
     this.serial = 0;
     this.plans = [...plans];
-    this.route = plans.flatMap((plan, song) => parsePlan(song, plan, catalog).map(item => this.entry(item)));
+    this.route = liveRoute ? liveRoute.map(item=>this.entry({...item})) : plans.flatMap((plan, song) => parsePlan(song, plan, catalog).map(item => this.entry(item)));
     this.route.push(this.entry({song:catalog.length - 1, end:true}));
     this.cursor = 0;
     this.page = 0;
