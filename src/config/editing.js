@@ -9,8 +9,8 @@ export function setBackgroundCue(raw,item,background){
     list[sequence].background=background;
   }else if(kind==='reading'){
     list[sequence].backgroundAt={...list[sequence].backgroundAt,[sub+1]:background};
-  }else if(kind==='song'){
-    const entry=list[sequence];entry.backgroundAt={...entry.backgroundAt,[sub+1]:background};
+  }else if(kind==='song' || kind==='song-utility'){
+    const entry=list[sequence];entry.backgroundSlots={...entry.backgroundSlots,[item.origin.slot+1]:background};
   }else if(kind==='group'){
     const ref=list[sequence].pages[sub];
     list[sequence].pages[sub]={...(typeof ref==='string'?{page:ref}:ref),background};
