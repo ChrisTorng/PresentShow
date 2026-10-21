@@ -35,8 +35,14 @@ export function leaderSnapshot(show, raw) {
     const matchesPrototype = prototypeSongs[i]?.title === show.songs[i]?.title
       && prototypeSongs[i].sections.every(section => song.sections.some(s => s.name.replaceAll(' ','') === section.name.replaceAll(' ','')));
     const plan = configured || (matchesPrototype ? defaultPlans[i] : ['前奏', ...song.sections.map(s=>s.name), '尾奏'].join('-'));
-    parsePlan(i,plan,result); // reject invalid plans before publishing
-    return plan;
+    try{parsePlan(i,plan,result);return plan;}
+    catch{
+      // A source section may have been renamed after an explicit page-level
+      // arrangement was saved. The actual route below remains authoritative.
+      const fallback=song.sections.map(s=>s.name).join('-');
+      parsePlan(i,fallback,result);
+      return fallback;
+    }
   });
   // A single authoritative route is generated from the very same slides shown
   // on the controller, including repeated/removed/reordered lyric references.
