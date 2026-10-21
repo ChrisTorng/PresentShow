@@ -4,7 +4,7 @@ const sectionChinese={V:'主歌',P:'前副歌',C:'副歌',B:'橋段',I:'前奏',
 export const compactSectionName=name=>String(name||'').replace(/\s+/g,'');
 export function displaySectionName(name, key, number, count=1) {
   const base=sectionChinese[key] || name;
-  const stated=String(name||'').match(/(?:\s|^)(\d+)\s*$/);
+  const stated=String(name||'').match(/(\d+)\s*$/);
   const explicit=stated ? Number(stated[1]) : null;
   // A numbered verse or chorus remains stable even if another segment is removed.
   return base + ((explicit!==null || count>1) ? (explicit ?? number) : '');
