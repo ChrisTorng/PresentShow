@@ -1,0 +1,13 @@
+name = "present-show-sync"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+# For a custom domain, configure a Cloudflare route after deploying,
+# or leave workers.dev enabled and use https://present-show-sync.<account>.workers.dev.
+[vars]
+ALLOWED_ORIGINS = "http://christorng.idv.tw,https://christorng.idv.tw,https://present-show.vercel.app,https://christorng.github.io"
+[[durable_objects.bindings]]
+name = "SHOW_ROOMS"
+class_name = "ShowRoom"
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ShowRoom"]

@@ -1,5 +1,5 @@
-import {defaultPlans, songs as prototypeSongs} from './leader/singer-data.js';
-import {parsePlan} from './leader/singer-sequence.js';
+import {defaultPlans, songs as prototypeSongs} from './singer-data.js';
+import {parsePlan} from './singer-sequence.js';
 
 const styleFor = (label, key) => {
   const name = String(label).replaceAll(' ', '').toLowerCase();
@@ -23,9 +23,11 @@ export function leaderSnapshot(show, raw) {
       sections.at(-1).pages.push(page.text);
     }
     return {
-      title: metadata.title || song.title,
+      title: song.title,
+      displayTitle: metadata.title || song.title,
+      sourceSongId: song.id,
       credit: metadata.credit || '',
-      sections: sections.map(({name,kind,pages}) => ({name,kind,pages})),
+      sections: sections.map(({sectionId,name,kind,pages}) => ({sectionId,name,kind,pages})),
     };
   });
   const plans = result.map((song,i) => {
