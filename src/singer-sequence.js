@@ -1,45 +1,46 @@
 import {songs, utilities, defaultPlans} from './singer-data.js';
 
-export function itemFor(song, name) {
+export function itemFor(song, name, catalog = songs) {
   const normalized = name.replaceAll(' ', '');
-  const section = songs[song].sections.findIndex(section => section.name.replaceAll(' ', '') === normalized);
+  const section = catalog[song].sections.findIndex(section => section.name.replaceAll(' ', '') === normalized);
   if (section >= 0) return {song, section};
   if (utilities.includes(normalized)) return {song, utility:normalized};
-  throw new Error(`「${songs[song].title}」沒有段落「${name}」。`);
+  throw new Error(`「${catalog[song].title}」沒有段落「${name}」。`);
 }
-export function parsePlan(song, text) {
+export function parsePlan(song, text, catalog = songs) {
   const parts = text.split(/[-→\n,，]+/).map(part => part.trim()).filter(Boolean);
   if (!parts.length) throw new Error('請至少安排一個段落。');
   return parts.flatMap(part => {
     const match = /^(.*?)(?:\s*[×*]\s*(\d+))?$/.exec(part);
     const count = Number(match[2] || 1);
     if (count < 1 || count > 32) throw new Error('重複次數需介於 1 到 32。');
-    const item = itemFor(song, match[1].trim());
+    const item = itemFor(song, match[1].trim(), catalog);
     return Array.from({length:count}, () => ({...item}));
   });
 }
 export function samePart(a, b) {
   return !!a && !!b && a.song === b.song && a.section === b.section && a.utility === b.utility && !!a.end === !!b.end;
 }
-export function nameOf(item) {
+export function nameOf(item, catalog = songs) {
   if (!item) return '—';
-  return item.end ? '結束' : item.utility || songs[item.song].sections[item.section].name;
+  return item.end ? '結束' : item.utility || catalog[item.song].sections[item.section].name;
 }
-export function kindOf(item) {
-  return !item || item.end ? 'ending' : item.utility ? 'instrumental' : songs[item.song].sections[item.section].kind;
+export function kindOf(item, catalog = songs) {
+  return !item || item.end ? 'ending' : item.utility ? 'instrumental' : catalog[item.song].sections[item.section].kind;
 }
-export function pagesOf(item) {
+export function pagesOf(item, catalog = songs) {
   if (!item || item.end) return ['演唱結束'];
-  if (item.utility === '尾句') return [songs[item.song].sections.at(-1).pages.at(-1)];
-  return item.utility ? [item.utility] : songs[item.song].sections[item.section].pages;
+  if (item.utility === '尾句') return [catalog[item.song].sections.at(-1).pages.at(-1)];
+  return item.utility ? [item.utility] : catalog[item.song].sections[item.section].pages;
 }
 
 export class SingerSequence {
-  constructor(plans = defaultPlans) {
+  constructor(plans = defaultPlans, catalog = songs) {
+    this.catalog = catalog;
     this.serial = 0;
     this.plans = [...plans];
-    this.route = plans.flatMap((plan, song) => parsePlan(song, plan).map(item => this.entry(item)));
-    this.route.push(this.entry({song:songs.length - 1, end:true}));
+    this.route = plans.flatMap((plan, song) => parsePlan(song, plan, catalog).map(item => this.entry(item)));
+    this.route.push(this.entry({song:catalog.length - 1, end:true}));
     this.cursor = 0;
     this.page = 0;
     this.route[0].visited = true;
@@ -53,7 +54,7 @@ export class SingerSequence {
   }
   get nextPage() {
     if (this.cue) return {item:this.route.find(item => item.id === this.cue.id), page:this.cue.page || 0};
-    if (this.page + 1 < pagesOf(this.current).length) return {item:this.current, page:this.page + 1};
+    if (this.page + 1 < pagesOf(this.current, this.catalog).length) return {item:this.current, page:this.page + 1};
     return this.nextSegment ? {item:this.nextSegment, page:0} : null;
   }
   clearCue() {
@@ -105,7 +106,7 @@ export class SingerSequence {
     return true;
   }
   editPlan(song, text) {
-    const items = parsePlan(song, text);
+    const items = parsePlan(song, text, this.catalog);
     this.clearCue();
     let remaining = items;
     if (this.current.song === song) {

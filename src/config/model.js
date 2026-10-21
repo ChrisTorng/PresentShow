@@ -47,7 +47,7 @@ export function compile(raw, now = new Date()) {
     if (!Object.hasOwn(item,'autoNext')) item.autoNext = item.seconds ? (index+1 < items.length ? index+1 : null) : null;
     if (item.autoNext >= items.length) item.autoNext = null;
   });
-  return {name:config.name || '未命名投影',items,variables:vars,backgrounds,songs,sections};
+  return {name:config.name || '未命名投影',items,variables:vars,backgrounds,songs,sections,leaderPlans:config.leaderPlans || {}};
 }
 export function resolveAsset(src, base, assets = new Map()) {
   const clean = src.replaceAll('\\','/').replace(/^\.\//,'');
