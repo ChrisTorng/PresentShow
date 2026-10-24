@@ -1,14 +1,9 @@
 // Cloudflare Worker + SQLite-backed Durable Object. Deploy separately from the static website.
 import {DurableObject} from 'cloudflare:workers';
+import {validOrigin} from './origin-policy.js';
 
 const ROOM = /^[a-f0-9]{32}$/;
 const json = (body, status=200) => new Response(JSON.stringify(body), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
-const validOrigin = (origin, env) => {
-  if (!origin) return false;
-  if (/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) return true;
-  return (env.ALLOWED_ORIGINS || 'https://christorng.idv.tw,http://christorng.idv.tw,https://present-show.vercel.app,https://christorng.github.io')
-    .split(',').map(x=>x.trim()).includes(origin);
-};
 
 export default {
   async fetch(request, env) {
@@ -33,6 +28,11 @@ export class ShowRoom extends DurableObject {
     for(const ws of this.ctx.getWebSockets())if(filter(ws.deserializeAttachment()||{}))this.send(ws,data);
   }
   online() {return this.ctx.getWebSockets().some(ws=>ws.deserializeAttachment()?.role==='controller' && ws.readyState===1);}
+  presence() {
+    return {type:'presence',controllerOnline:this.online(),leaderCount:this.ctx.getWebSockets().filter(ws=>{
+      const state=ws.deserializeAttachment();return ws.readyState===1&&state?.role==='leader'&&state.synced;
+    }).length};
+  }
   async fetch(request) {
     const url=new URL(request.url),role=url.searchParams.get('role'),key=url.searchParams.get('key')||'';
     if(role==='controller') {
@@ -45,7 +45,7 @@ export class ShowRoom extends DurableObject {
     server.serializeAttachment({role,uid:crypto.randomUUID()});
     const saved=await this.ctx.storage.get('snapshot');
     if(saved)this.send(server,{type:'state',revision:await this.ctx.storage.get('revision')||0,snapshot:saved});
-    this.broadcast({type:'presence',controllerOnline:this.online()});
+    this.broadcast(this.presence());
     return new Response(null,{status:101,webSocket:client});
   }
   async webSocketMessage(ws,message) {
@@ -62,6 +62,11 @@ export class ShowRoom extends DurableObject {
       await this.ctx.storage.put('snapshot',s);
       await this.ctx.storage.put('revision',revision);
       this.broadcast({type:'state',revision,snapshot:s});
+    } else if(msg?.type==='ack' && who.role==='leader' && Number.isInteger(msg.revision)) {
+      const revision=await this.ctx.storage.get('revision')||0;
+      if(msg.revision===revision&&!who.synced){ws.serializeAttachment({...who,synced:true});this.broadcast(this.presence());}
+    } else if(msg?.type==='ping') {
+      this.send(ws,{type:'pong'});
     } else if(msg?.type==='navigate' && who.role==='leader') {
       const t=msg.target;
       if(!t || !Number.isInteger(t.songIndex)||!Number.isInteger(t.sectionIndex)||
@@ -76,10 +81,10 @@ export class ShowRoom extends DurableObject {
   }
   webSocketClose(ws) {
     try{ws.close();}catch{}
-    this.broadcast({type:'presence',controllerOnline:this.online()});
+    this.broadcast(this.presence());
   }
   webSocketError(ws) {
     try{ws.close(1011,'WebSocket error');}catch{}
-    this.broadcast({type:'presence',controllerOnline:this.online()});
+    this.broadcast(this.presence());
   }
 }

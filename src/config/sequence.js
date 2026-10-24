@@ -34,25 +34,28 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
       if(page.fit && !['contain','original'].includes(page.fit))throw new Error(`${pageId}：fit 請使用 contain 或 original。`);
       const duration=(typeof ref==='object'?ref.seconds:undefined) ?? seconds ?? page.seconds ?? 0;
       if(!Number.isFinite(duration) || duration<0)throw new Error(`${pageId}：seconds 必須是大於等於 0 的數字。`);
-      push({...page,id:pageId,group,seconds:duration,label:page.type==='blank'?'':page.label||pageId,background:ref?.background??page.background,transition:ref?.transition??page.transition},{sequence:sequenceIndex,kind:sub===null?'page':'group',sub});
+      const label=String(page.label||page.heading||'');
+      const displayLabel=label.startsWith(pageId+' · ')?label.slice(pageId.length+3):label===pageId?'':label;
+      push({...page,id:pageId,group,seconds:duration,label:page.type==='blank'?'':displayLabel,background:ref?.background??page.background,transition:ref?.transition??page.transition},{sequence:sequenceIndex,kind:sub===null?'page':'group',sub});
     };
     section.sequence.forEach((entry,sequenceIndex)=>{
       if(entry && typeof entry==='object' && Object.hasOwn(entry,'song')){
         const song=songs.find(s=>s.id===entry.song || s.title===entry.song);
         if(!song)throw new Error(`找不到歌曲：${entry.song}`);
         for(const field of ['backgroundAt','transitionAt'])for(const page of Object.keys(entry[field]||{}))if(!/^\d+$/.test(page) || Number(page)<1 || Number(page)>song.pages.length)throw new Error(`${song.title}：${field} 頁碼超出歌曲範圍。`);
-        const metadata=config.songMeta?.[song.id]||{};
-        const songInfo={id:song.id,title:song.title,instance:`${sectionIndex}:${sequenceIndex}`};
-        const titlePage=(entry.titlePage??config.songTitlePage)!==false;
+        const metadata={english:song.english,credit:song.credit,...config.songMeta?.[song.id]};
+        const songInfo={id:song.id,title:metadata.title||song.title,instance:`${sectionIndex}:${sequenceIndex}`};
+        const arranged=arrangedSong(song,entry,entry.plan??song.plan??config.leaderPlans?.[song.id]??config.leaderPlans?.[song.title]);
+        const titlePage=(entry.titlePage??config.songTitlePage)!==false&&!arranged[0]?.utility;
         if(titlePage)push({id:`song-${song.id}-title`,type:'text',layout:'song-title',label:metadata.title||song.title,
           blocks:[{kind:'title',text:metadata.title||song.title},{kind:'subtitle',text:metadata.english||''}],credit:metadata.credit||'',song:{...songInfo,titlePage:true},
           seconds:0,media:entry.media,background:entry.background,transition:entry.transition},
           {sequence:sequenceIndex,kind:'song-title',sub:null});
         const lyricLines=song.pages.flatMap(p=>p.text.split('\n'));
-        const arranged=arrangedSong(song,entry,entry.plan??config.leaderPlans?.[song.id]??config.leaderPlans?.[song.title]);
-        arranged.forEach(({source,utility,slot},i)=>{
+        const songStart=items.length;
+        arranged.forEach(({source,utility,slot,loop},i)=>{
           const original=source ? song.pages.indexOf(source) : -1;
-          const common={seconds:0,lyricLines,
+          const common={seconds:0,lyricLines,...(loop!==undefined?{loopGroup:`${songInfo.instance}:${loop}`} : {}),
             lyricMaxLines:Math.max(...song.pages.map(p=>p.text.split('\n').length)),
             lyricStyle:entry.lyricStyle??metadata.lyricStyle??'panel',
             media:i===0&&!titlePage?entry.media:'keep',
@@ -60,10 +63,11 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
             transition:entry.transitionSlots?.[slot+1]??(source?entry.transitionAt?.[original+1]:undefined)??(i===0?entry.transition:undefined)};
           if(utility){
             const lastLine=song.pages.at(-1).text.split('\n').at(-1);
-            const tail=utility==='尾句';
-            push({...common,id:`song-${song.id}-utility-${slot}`,type:tail?'text':'blank',
+            const utilityBase=utility.replace(/\d+$/,''),tail=utilityBase==='尾句',title=utilityBase!=='尾奏'&&!tail;
+            push({...common,id:`song-${song.id}-utility-${slot}`,type:utilityBase==='尾奏'?'blank':'text',
+              ...(title?{layout:'song-title',credit:metadata.credit||''}:{}),
               label:`${song.title} · ${utility}`,
-              blocks:tail?[{kind:'lyrics',text:lastLine}]:[],
+              blocks:tail?[{kind:'lyrics',text:lastLine}]:title?[{kind:'title',text:songInfo.title},{kind:'subtitle',text:metadata.english||''}]:[],
               song:{...songInfo,utility,sectionLabel:utility,planSlot:slot}},
               {sequence:sequenceIndex,kind:'song-utility',sub:null,slot});
           }else{
@@ -75,6 +79,11 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
               {sequence:sequenceIndex,kind:'song',sub:original,slot});
           }
         });
+        const loops=new Map();
+        for(let i=songStart;i<items.length;i++)if(items[i].loopGroup){
+          const indices=loops.get(items[i].loopGroup)||[];indices.push(i);loops.set(items[i].loopGroup,indices);
+        }
+        for(const indices of loops.values())items[indices.at(-1)].loopNext=indices[0];
       }else if(entry && typeof entry==='object' && typeof entry.text==='string'){
         const paragraphs=entry.text.trim().split(/\n\s*\n/).filter(p=>p.trim());
         if(!paragraphs.length)throw new Error('文字項目不可為空。');

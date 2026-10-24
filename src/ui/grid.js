@@ -34,15 +34,15 @@ export function renderGrid({container,show,asset,onSelect,onReorder,onEdit}){
       const renderer=new ForegroundManager(host,()=>{});renderer.render(display,false,true);renderers.push(renderer);observer.observe(thumb);
       const meta=document.createElement('div');meta.className='card-meta';
       const n=document.createElement('span');n.className='card-index';n.textContent=String(i+1).padStart(2,'0');
-      const label=document.createElement('span');label.className='card-title';label.textContent=item.song?.titlePage?'標題':item.song&&!item.song.boundary?item.song.sectionLabel||item.label:item.type==='blank'?'':item.label;
+      const label=document.createElement('span');label.className='card-title';label.textContent=item.song?.titlePage?'前奏':item.song&&!item.song.boundary?item.song.sectionLabel||item.label:item.type==='blank'?'':item.label;
       const badge=document.createElement('span');badge.className='card-badge';badge.textContent=item.seconds?`${item.seconds}s`:item.song?(item.song.sectionStart?item.song.sectionKey||'':''):item.track?.loop?'↻':'';
       meta.append(n,label,badge);card.append(thumb,meta);
       if(item.song&&!item.song.titlePage&&!item.song.boundary){
-        const kind=item.song.utility?'instrumental':item.song.sectionKey==='C'?'chorus':item.song.sectionKey==='P'?'prechorus':item.song.sectionKey==='T'?'tag':'verse';
+        const kind=item.song.utility?'instrumental':item.song.sectionKey==='C'?'chorus':item.song.sectionKey==='P'?'prechorus':['T','B'].includes(item.song.sectionKey)?'tag':'verse';
         card.dataset.lyricKind=kind;
-        const marker=document.createElement('strong');marker.className='song-part-label';marker.textContent=item.song.sectionLabel||item.song.utility;card.append(marker);
+        label.classList.add('song-part-label');
       }
-      if(card.draggable){
+      if(item.origin.kind==='song'){
         const menu=document.createElement('details');menu.className='card-menu';menu.draggable=false;
         const trigger=document.createElement('summary');trigger.textContent='⋯';trigger.title='頁面編排操作';menu.append(trigger);
         for(const [action,text] of [['copy','複製此頁'],['up','向前移動'],['down','向後移動'],['delete','刪除此頁']]){

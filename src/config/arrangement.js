@@ -18,9 +18,11 @@ export function defaultArrangement(song) {
 export function planArrangement(song,plan){
   const sections=songSections(song);
   const catalog=[{title:song.title,sections}];
-  return parsePlan(0,plan,catalog).flatMap(part=>
-    part.utility ? [{utility:part.utility}] :
-    sections[part.section].pages.map((_,i)=>({section:sections[part.section].name,page:i+1})));
+  return parsePlan(0,plan,catalog).flatMap((part,group)=>{
+    const loop=part.loop?{loop:group}:{};
+    return part.utility ? [{utility:part.utility,...loop}] :
+    sections[part.section].pages.map((_,i)=>({section:sections[part.section].name,page:i+1,...loop}));
+  });
 }
 export function arrangedSong(song, entry, plan){
   const arrangement=entry.arrangement ?? (plan ? planArrangement(song,plan) : defaultArrangement(song));
@@ -28,16 +30,16 @@ export function arrangedSong(song, entry, plan){
   const sections=songSections(song);
   return arrangement.map((token,index)=>{
     if(token && typeof token==='object' && typeof token.utility==='string'){
-      if(!['前奏','間奏','變奏','尾句','尾奏'].includes(token.utility))
+      if(!['前奏','間奏','變奏','尾句','尾奏','禱告','講話'].includes(token.utility.replace(/\d+$/,'')))
         throw Error(`${song.title}：未知的演唱提示 ${token.utility}。`);
-      return {utility:token.utility,source:null,slot:index,ref:{utility:token.utility}};
+      return {utility:token.utility,source:null,slot:index,loop:token.loop,ref:{...token}};
     }
     if(!token || typeof token.section!=='string'||!Number.isInteger(token.page)||token.page<1)
       throw Error(`${song.title}：編排第 ${index+1} 項需要 section 與正整數 page。`);
     const section=sections.find(s=>compactSectionName(s.name)===compactSectionName(token.section));
     const source=section?.pages[token.page-1];
     if(!source)throw Error(`${song.title}：編排第 ${index+1} 項找不到 ${token.section} 第 ${token.page} 頁。`);
-    return {source,slot:index,ref:{section:section.name,page:token.page}};
+    return {source,slot:index,loop:token.loop,ref:{...token,section:section.name,page:token.page}};
   });
 }
 export function upgradeSongArrangements(raw,show) {
@@ -47,7 +49,7 @@ export function upgradeSongArrangements(raw,show) {
     if(entry.arrangement)continue;
     const song=show.songs.find(s=>s.id===entry.song||s.title===entry.song);
     if(!song)continue;
-    const plan=result.leaderPlans?.[song.id] ?? result.leaderPlans?.[song.title];
+    const plan=entry.plan ?? song.plan ?? result.leaderPlans?.[song.id] ?? result.leaderPlans?.[song.title];
     entry.arrangement=arrangedSong(song,entry,plan).map(s=>s.ref);
   }
   return result;

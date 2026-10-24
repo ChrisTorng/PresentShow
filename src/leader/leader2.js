@@ -168,6 +168,8 @@ const sync=mountLeader({onState:snapshot=>{
   sequence.cursor=cursor;sequence.page=Math.max(0,Math.min(at.page||0,pagesOf(sequence.current,songs).length-1));
   sequence.route.forEach((part,i)=>{part.visited=i<=cursor;});viewedSong=at.songIndex;
  }else viewedSong=Math.max(0,Math.min(viewedSong,songs.length-1));
+ const queued=snapshot.cue,entry=sequence.route[queued?.routeIndex];
+ if(queued?.singing&&entry&&!entry.end)sequence.cue={type:queued.routeIndex===sequence.cursor?'page':'section',id:entry.id,page:queued.page||0};
  render();
 }});
 

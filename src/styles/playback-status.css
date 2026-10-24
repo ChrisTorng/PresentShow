@@ -1,0 +1,3 @@
+:root{--playing-color:#357357;--next-color:#d3a332;--playing-fill:#e5f1e9;--next-fill:#fff6df}
+.next-panel,.next-panel.queued{border-color:var(--next-color);outline:none}
+.next-text-preview[data-kind]{border-left:0}

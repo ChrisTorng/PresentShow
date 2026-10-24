@@ -18,7 +18,7 @@ const deck=new MediaDeck(document.querySelector('#media-layer'),message=>error('
 const meter=new AudioMeter();let active=false,item=null,shield=false,renderVersion=0;
 const cover=document.querySelector('#manual-shield'),manual=new ManualShield(cover,deck);
 const web=new WebStage(document.querySelector('#web-layer'),message=>error('web',message));
-function drawForeground(){if(!item)return;foreground.render(item,active||(item.track?.kind==='video'&&!!deck.current),cue);if(deck.current)deck.current.root.classList.toggle('audio-only',(item.type!=='media'&&item.track?.kind!=='youtube')||item.track?.kind==='audio');
+function drawForeground(){if(!item)return;foreground.render(item,active||(item.track?.kind==='video'&&!!deck.current),cue);if(deck.current)deck.current.root.classList.toggle('audio-only',item.type!=='media'||item.track?.kind==='audio');
  const poster=document.querySelector('#shield-poster');const src=item.track?.poster||'';if(poster.getAttribute('src')!==src){if(src)poster.src=src;else poster.removeAttribute('src');}poster.hidden=!src;document.querySelector('#shield-title').textContent=item.track?.label||item.label||'';
 }
 window.addEventListener('message',event=>{

@@ -44,6 +44,8 @@ export class MediaDeck{
     if(!opts.active && track?.kind!=='video')track=null;
     if(this.current?.track.key===track?.key && this.current?.track.src===track?.src && this.current?.active===opts.active){this.current?.root.classList.toggle('audio-only',track?.kind==='audio'||!opts.visible);return onReady();}
     this.finish();const version=++this.version,old=this.current;this.current=null;this.outgoing=old;
+    // A retained soundtrack must stay visually hidden while its audio fades out.
+    if(old&&!opts.visible)old.root.classList.add('audio-only');
     if(!opts.fade){this.dispose(old);this.outgoing=null;}this.onError('');
     if(track)await this.create(track,opts);
     if(version!==this.version)return;

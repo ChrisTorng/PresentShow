@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {networkInterfaces} from 'node:os';
 import { createPresentShowServer, defaultCorsOrigins } from '../server.mjs';
 
 let server, root, base;
@@ -13,7 +14,7 @@ before(async () => {
   await writeFile(path.join(root, 'private', 'meeting', 'pray', 'image.jpg'), 'image fixture');
   await writeFile(path.join(root, 'private', 'meeting', 'clip.mp4'), '0123456789');
   server = createPresentShowServer({root, extraOrigins:'https://preview.example.com'});
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  await new Promise(resolve => server.listen(0, '0.0.0.0', resolve));
   base = `http://127.0.0.1:${server.address().port}`;
 });
 after(async () => {
@@ -107,5 +108,16 @@ test('missing files and invalid ranges retain CORS headers; writes stay disabled
 test('additional origins must be exact HTTP or HTTPS origins', () => {
   for (const extraOrigins of ['*', 'null', 'https://example.com/path', 'https://example.com/', 'file://example.com']) {
     assert.throws(() => createPresentShowServer({extraOrigins}));
+  }
+});
+
+test('LAN interfaces serve mobile browsers and accept their own origin', async () => {
+  const addresses=Object.values(networkInterfaces()).flat().filter(address=>address?.family==='IPv4'&&!address.internal);
+  for(const address of addresses){
+    const origin=`http://${address.address}:${server.address().port}`;
+    const response=await fetch(`${origin}/private/meeting/show.yml`,{headers:{Origin:origin}});
+    assert.equal(response.status,200,origin);
+    assert.equal(response.headers.get('access-control-allow-origin'),origin);
+    await response.text();
   }
 });

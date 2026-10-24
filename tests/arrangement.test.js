@@ -42,16 +42,21 @@ test('original controller expands repeat order without duplicating source lyrics
 });
 test('the Leader selects precisely the requested repeated occurrence',()=>{
  const show=compile(raw),snapshot=leaderSnapshot(show,raw);
- let actual=show.items.findIndex(item=>item.song?.utility==='前奏');
+ let actual=show.items.findIndex(item=>item.song?.utility==='前奏'),queued=null;
  const sync=Object.create(ControllerSync.prototype);
  sync.getShow=()=>show;sync.getRaw=()=>raw;sync.getIndex=()=>actual;
  sync.status=message=>{throw Error(message);};
- sync.onTake=index=>{actual=index;};
+ sync.getCue=()=>queued;
+ sync.onCue=index=>{queued=index;};
  sync.navigate({songIndex:0,sectionIndex:1,page:0,routePage:0,routeIndex:5});
- assert.equal(actual,snapshot.route[5].slideIndices[0]);
+ assert.equal(queued,snapshot.route[5].slideIndices[0]);
+ assert.equal(sync.snapshot().active.routeIndex,0);
+ assert.equal(sync.snapshot().cue.routeIndex,5);
+ actual=queued;queued=null; // Only the controller's take advances playback.
  assert.equal(sync.snapshot().active.routeIndex,5);
  sync.navigate({songIndex:0,sectionIndex:-1,utility:'尾奏',page:0,routePage:0,routeIndex:6});
- assert.equal(sync.snapshot().active.utility,'尾奏');
+ assert.equal(sync.snapshot().cue.utility,'尾奏');
+ assert.equal(sync.snapshot().active.routeIndex,5);
 });
 test('copy, move, and delete edit references, not the original song source',()=>{
  const show=compile(raw);

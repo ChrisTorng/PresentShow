@@ -4,7 +4,7 @@
 
 ## 開始使用
 
-1. 安裝 Node.js 20 以上，執行 `npm start`，開啟 http://localhost:4173 。不要直接雙擊 HTML，瀏覽器會限制模組、設定檔與 YouTube。
+1. 安裝 Node.js 20 以上，執行 `npm start`，開啟 http://localhost:4173 。同 Wi-Fi 手機請使用啟動訊息列出的電腦區域網路網址（例如 `http://192.168.1.103:4173/`）；主控也使用該網址開啟，產生的 Leader 連結與 QR Code 才能供手機使用。不要直接雙擊 HTML，瀏覽器會限制模組、設定檔與 YouTube。
 2. 選示範、本機 YAML／JSON，或輸入設定檔網址。
 3. 按「開啟投影視窗」，拖至第二螢幕，點「全螢幕」或雙擊畫面。
 4. 點縮圖預選、再點同頁播出；左右鍵換頁；空白鍵開始／暫停媒體與輪播。輸入欄及編輯器保留原本鍵盤行為。
@@ -35,12 +35,12 @@ https://present-show.vercel.app/?config=http%3A%2F%2Flocalhost%3A4173%2Fprivate%
 
 請允許 Chrome／Edge 提示的「本機網路存取」權限；若已封鎖，請到該網站的網站權限修改後重新載入。公開網站需使用 HTTPS 才能取得這項權限。localhost 指開啟網頁的那台電腦，手機無法透過這個網址讀取電腦上的素材。
 
-本機伺服器只監聽 `127.0.0.1`，預設允許以下 origin 讀取（不含網站路徑）：
+本機伺服器預設監聽 `0.0.0.0`，供同網路裝置讀取。若 Windows 防火牆詢問 Node.js 網路存取，請允許私人網路；手機也需與電腦連接同一個 Wi-Fi。只要本機使用時，可先設定 `$env:PRESENTSHOW_HOST = '127.0.0.1'` 再啟動。預設允許以下 origin 讀取（不含網站路徑）：
 
 - `https://present-show.vercel.app`、`https://present-show-christorngs-projects.vercel.app`、`https://present-show-git-main-christorngs-projects.vercel.app`
 - `https://christorng.github.io`（涵蓋其下所有 GitHub Pages 專案路徑）
 - `https://christorng.idv.tw`、`http://christorng.idv.tw`（HTTP 來源仍受瀏覽器安全限制）
-- 本機伺服器自己的 `http://localhost:<port>` 與 `http://127.0.0.1:<port>`
+- 本機伺服器自己的 `http://localhost:<port>`、`http://127.0.0.1:<port>` 與接收連線之區域網路介面的 HTTP origin
 
 支援 GET／HEAD／OPTIONS、影片 Range 請求及舊版 Private Network Access 預檢。其他 origin 回應 403。需要額外的 Vercel 預覽網域或其他個人網域時，以 PowerShell 設定完整 origin 清單再啟動：
 
@@ -94,13 +94,13 @@ sequence:
 
 此處不複製歌詞，僅指定來源段落與頁碼。主控縮圖支援拖曳改順序、按住 Ctrl 拖曳複製、選取後 Delete 刪除，也可透過縮圖的 ⋯ 選單進行複製／移動／刪除。調整僅限同一首歌內的實際播放引用；如需調整整首歌曲、跨流程移動，仍編輯 YAML 的 `sections[*].sequence`。修改後用「編輯 YAML」→「下載設定檔」保存。
 
-私有 YAML／JSON 不用重做也不用公開。直接載入本機私有設定：原有 `songs`、`sections` 與頁面會保留；按「建立播放編排」即為每首歌建立可拖曳的 `arrangement`，舊設定沒有 `leaderPlans` 時則從原來每段依序展開。可在 YAML 中補上 `leaderPlans` 或直接編輯引用清單，再下載到本機。編輯原始歌詞仍只要一份，引用會使用更新後內容。
+私有 YAML／JSON 不用重做也不用公開。直接載入本機私有設定：原有 `songs`、`sections` 與頁面會保留；歌曲會自動依唱法展開；第一次拖曳或使用歌詞縮圖的 ⋯ 選單時，會建立可編輯的 `arrangement`。舊設定沒有唱法時，從原來每段依序展開。可在 YAML 中補上 `leaderPlans` 或直接編輯引用清單，再下載到本機。編輯原始歌詞仍只要一份，引用會使用更新後內容。
 
-下方控制區可拖曳分隔線調整高度，右側為加寬的純文字下一頁歌詞／段落預覽（不顯示投影背景），高度偏好會記在瀏覽器本機。
+下方控制區可拖曳分隔線調整高度，右側的下一頁預覽將段落名稱放左、完整歌詞放右，依實際寬高縮放字體；高度偏好會記在瀏覽器本機。縮圖段落名稱位於下方資訊列，不覆蓋歌詞。
 
 ## 編輯設定
 
-主控台「編輯 YAML」可修改、套用、下載設定；仍接受原本 JSON。「編輯歌詞」可直接貼純文字，免處理縮排。修改只在本次工作階段有效，請下載保存。拖曳可排序一般頁面、或同一輪播內的頁面；跨項目／輪播搬移與加減頁面請改各項目的 `sequence`。歌詞分頁請修改空行，整首歌曲順序請修改 sequence 的 song 項目。
+主控台「編輯 YAML」可修改、套用、下載設定；仍接受原本 JSON。「編輯歌詞」可直接貼純文字，免處理縮排。套用兩種編輯都會保留目前播放頁、預選下一頁及反覆次數，並持續更新投影與 Leader；若該頁已移除，會保留在同一流程區段的相近位置。修改只在本次工作階段有效，請下載保存。拖曳可排序一般頁面、或同一輪播內的頁面；跨項目／輪播搬移與加減頁面請改各項目的 `sequence`。歌詞分頁請修改空行，整首歌曲順序請修改 sequence 的 song 項目。
 
 直接編輯 YAML 會保留註解及排版；透過歌詞／背景面板或拖曳修改時，會重新產生 YAML，原註解不保留。YAML 的 `#RRGGBB` 色碼、帳號與時間建議加引號，避免誤判成註解或數字。以下舊 JSON 範例仍可使用。
 
@@ -245,6 +245,10 @@ sequence:
 
 在「編輯歌詞」直接貼以下形式。`# 歌名` 開始新歌，一個或多個空行就是換頁；頁內換行保留。段落標記本身不投影，空白也不會產生空頁。`X4` 等文字會原樣呈現，不會自動複製頁面。
 
+也接受 `# 中文標題 - 英文標題 - 來源`。歌名下面、第一個 `[]` 段落之前，可放播放順序，例如 `前奏-主歌x2-副歌x2-小副歌-講話-禱告-尾奏`；順序行不會成為歌詞。此處的 `x2`／`×2`／`*2` 表示完整段落重複兩次，空行仍決定每段內的分頁。 `副歌x*` 表示無限反覆：下一頁會在該段的所有分頁間循環，Leader 4 只顯示一個區段並更新當次反覆次數。唱法後面可接 `-尾奏`，要結束時預選尾奏再播出即可跳出循環。有限反覆的次數只在當次連續反覆內計算，遇到其他段落即重新起算。直接貼上即可更新標題與演唱順序，無須再維護另一份標題資料。
+
+中文標記支援 `[主歌]`、`[前副歌]`、`[副歌]`、`[小副歌]` 等；舊的 `[Bridge]` 也統一顯示為「小副歌」。前奏、間奏、講話、禱告使用歌曲中英文標題與來源的標題頁，尾奏為空白頁；若歌詞明列 `[尾句]`，順序中的「尾句」會使用該段歌詞。播放編排已以前奏開始時，不會另外插入通用標題頁。
+
 ```text
 # 第一首歌
 
@@ -266,7 +270,7 @@ sequence:
 一樣可以分頁
 ```
 
-- **v** → 預選下一個 `[Verse]` 起點；**p** → `[Pre-Chorus]`；**c** → `[Chorus]`；**b** → `[Bridge]`。也支援 I／O／T／E 對應 Intro／Outro／Tag／Ending，或中文主歌／導歌／副歌／橋段。
+- **v** → 預選下一個 `[Verse]` 起點；**p** → `[Pre-Chorus]`；**c** → `[Chorus]`；**b** → 舊的 `[Bridge]`（顯示小副歌）；**t** → `[小副歌]`。也支援 I／O／E 對應 Intro／Outro／Ending。
 - 同一類段落有多個時預選後面的起點，沒有下一段就回到第一段；只有一段就回到該段第一頁。段落裡因空行產生的續頁仍使用左右鍵，不會被當成新的段落起點。
 - 只在**目前這一次播放的歌曲內**跳轉，不會跳去其他歌曲。未標記的歌曲視為一段 Verse。找不到指定類型則保持目前頁面。
 - 段落鍵也可在投影視窗操作。輸入欄、下拉選单、編輯器與 Ctrl／Cmd 快捷鍵不會觸發歌曲跳轉。
@@ -503,16 +507,17 @@ YouTube 狀態只在播放器 ready/state-change 事件讀取，沒有定時 API
 YouTube 含延續音樂的圖片／服事表頁，一律改用原配色的靜態漸層；兩個預覽也不運作動態背景。播放器維持原尺寸、不透明且不重建，由靜態前景蓋住影片。結束 YouTube 段落才恢復設定的背景樣式。
 
 
-## Leader 1／2／3：Cloudflare WebSocket 多裝置同步
+## Leader 1／2／3／4：Cloudflare WebSocket 多裝置同步
 
 已保留 `src/leader/singer1.html`、`singer2.html`、`singer3.html` 三種獨立 UI 原型，不再用 `src/leader/singer.html` 當 Leader。
 正式同步入口為：
 - `/leader1.html` → `src/leader/leader1.html`
 - `/leader2.html` → `src/leader/leader2.html`
 - `/leader3.html` → `src/leader/leader3.html`
+- `/leader4.html` → `src/leader/leader4.html`
 
-UI 專屬程式放在 `src/leader/leader1.js`、`leader2.js`、`leader3.js`，共用 `leader-runtime.js`、`leader-sync.js`、`leader-sync-data.js`。
-三個 Leader 接收的是主控 **實際載入 YAML／JSON 的歌曲內容**，預設順序依照原 Singer 測試資料；若有自己的歌詞，主控 YAML 可設定 `leaderPlans`：
+UI 專屬程式放在 `src/leader/leader1.js`、`leader2.js`、`leader3.js`、`leader4.js`，共用 `leader-runtime.js`、`leader-sync.js`、`leader-sync-data.js`。
+四個 Leader 接收的是主控 **實際載入 YAML／JSON 的歌曲內容**，預設順序依照原 Singer 測試資料；若有自己的歌詞，主控 YAML 可設定 `leaderPlans`：
 
 ```yaml
 leaderPlans:
@@ -521,7 +526,7 @@ leaderPlans:
   3: 前奏-主歌1-主歌2-副歌1-副歌2-尾奏
 ```
 
-示範使用 `examples/leader-demo.json`（三首歌及原預設完整演唱順序）。主控的「Leader 即時同步」提供連線代碼和 QR Code。Leader 可在其他 Wi-Fi、4G/5G 網路連線，不需要知道教會內網 IP；任何能取得該連線代碼的人都可以操作歌詞換頁，因此不要公開分享邀請連結。
+示範使用 `examples/leader-demo.json`（三首歌及原預設完整演唱順序）。主控頂部、投影按鈕左側的 Leader 按鈕會展開同步浮動面板，完整呈現連線代碼、網址和 QR Code。WebSocket 已同步時按鈕呈藍底；有已成功套用資料的 Leader 時呈綠底並顯示連線數。連線人數由 Worker 確認，斷線及重連時更新，客戶端以心跳檢查失效連線。Leader 可在其他 Wi-Fi、4G/5G 網路連線，不需要知道教會內網 IP；任何能取得該連線代碼的人都可以預選歌詞，因此不要公開分享邀請連結。
 
 ### Cloudflare Worker 初次部署
 
@@ -529,8 +534,11 @@ leaderPlans:
 2. `cloudflare/wrangler.toml` 已設定 SQLite Durable Object migration、Worker binding 與來源網域清單；若換新網域，請更新 `ALLOWED_ORIGINS` 後重新部署。若在 Cloudflare 有自訂網域，也可額外配置 Worker Route。
 3. 將部署後的網址（例如 `https://present-show-sync.<account>.workers.dev`）填入 PresentShow 主控左欄的「Leader 即時同步」；按「啟用同步」，複製代碼或掃 QR Code。
 4. Leader 開啟其中一種 `leaderN.html`。從 QR 進入時會自動帶入 Worker 網址及代碼；手動進入則需填入這兩項。
-5. 主控載入歌詞設定後，Leader 就會收到歌曲、段落、播放順序、目前歌詞頁。任一 Leader 點選段落或歌詞頁，會發送指令給主控，再由主控換頁並廣播給所有 Leader。新加入、重新連線都會收到 Durable Object 保存的最新快照。
-6. 主控停留在標題、開場、訊息、輪播等非歌詞頁時，Leader 顯示「目前不是唱歌階段」覆蓋畫面。部分 Singer 預設「前奏／間奏／尾奏」沒有對應的 PresentShow 歌詞投影片，目前這類提示只能預備，不能觸發主控換頁。
+5. 主控載入歌詞設定後，Leader 就會收到歌曲、段落、播放順序、目前歌詞頁及預選項目。任一 Leader 點選段落或歌詞頁只會修改主控的下一個預選項目；再次點選也不會直接播出。主控按「播出 →」或右方向鍵才會切換投影並廣播。邀請網址下方另有「另開 Leader 頁面」連結，方便電腦測試。新加入、重新連線都會收到 Durable Object 保存的最新快照。
+6. 歌曲內的標題、空白頁、前奏／間奏／尾奏都屬於「敬拜階段」，連續歌曲之間不會出現遮蔽畫面。開場、訊息、輪播等其他階段才顯示「目前不是敬拜階段」。Leader 4 展開每段的全部歌詞，換到同段第二頁時保持整段位置，不再標示「第 1 頁／第 2 頁」；左側快捷鍵平均使用可用高度，不提供捲軸。
+7. 同 Wi-Fi 使用電腦區域網路網址時，同步 Worker 也須更新至含 `origin-policy.js` 的版本，才會接受私人 IPv4 網頁來源（10.x、172.16–31.x、192.168.x）；房間代碼與主控密鑰的驗證不變。
+
+Leader 4 一律以白底製作，綠色目前框、金色下一頁框與主控相同；下一頁預覽不會使用段落色改變外框。跳至另一段時，歌詞平滑捲至原本的框線位置，框線高度也同步變化。同段翻頁保留整段位置，手動捲動或預選不會改變目前播放。點選任意頁只改下一頁位置，主控播出後從該實際頁繼續。歌曲分頁按鈕會回到該首最後播放的段落，未唱歌曲回開頭，目前歌曲回目前段落頂端。左側僅呈現所有載入歌曲的段落及編排提示聯集；主歌與主歌1共用位置，標籤依瀏覽歌曲決定，其他編號段落亦同。
 
 WebSocket 使用 Durable Objects Hibernation，既不需要主控開放防火牆的入站 Port，也不需主控長時間維持 HTTP 輪詢。Worker 與靜態網站獨立部署，並不限定 GitHub Pages 或 Vercel。QR Code 使用瀏覽器載入的 qrcodejs CDN 函式庫於本機產生；CDN 無法載入時仍可複製網址手動開啟，邀請網址不會送給 QR Code API 服務。
 

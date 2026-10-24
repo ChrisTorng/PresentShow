@@ -3,6 +3,7 @@ import {spawn} from 'node:child_process';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
+import {randomBytes} from 'node:crypto';
 const root=fileURLToPath(new URL('../cloudflare/',import.meta.url));
 const require=createRequire(path.join(root,'package.json'));
 const WebSocket=require('ws');
@@ -17,11 +18,11 @@ async function ready(){
  }
  throw Error('Worker start timeout: '+logs);
 }
-const room='a'.repeat(32),key='b'.repeat(64),base='ws://127.0.0.1:8799/ws/'+room;
-async function open(role){
+const room=randomBytes(16).toString('hex'),key=randomBytes(32).toString('hex'),base='ws://127.0.0.1:8799/ws/'+room;
+async function open(role,origin='https://present-show.vercel.app'){
  const params=new URLSearchParams({role});
  if(role==='controller')params.set('key',key);
- const ws=new WebSocket(base+'?'+params,{headers:{Origin:'https://present-show.vercel.app'}});
+ const ws=new WebSocket(base+'?'+params,{headers:{Origin:origin}});
  sockets.push(ws);ws.messages=[];
  ws.on('message',b=>{try{ws.messages.push(JSON.parse(b.toString()));}catch{}});
  await new Promise((resolve,reject)=>{ws.once('open',resolve);ws.once('error',reject);});
@@ -38,18 +39,29 @@ async function message(ws,type,predicate=()=>true){
 try{
  await ready();
  const host=await open('controller'),a=await open('leader'),b=await open('leader');
+ const mobile=await open('leader','http://192.168.1.103:4173');
+ await message(mobile,'presence',m=>m.controllerOnline===true);
  await message(a,'presence',m=>m.controllerOnline===true);
  const snapshot={schema:1,showName:'測試',songs:[{title:'歌',sections:[{sectionId:1,name:'Verse',kind:'verse',pages:['歌詞']}]}],plans:['Verse'],active:{singing:true,slideIndex:2,songIndex:0,sectionIndex:0,page:0,routeIndex:0}};
  host.send(JSON.stringify({type:'publish',snapshot}));
  assert.equal((await message(a,'state',m=>m.snapshot?.showName==='測試')).revision,1);
  assert.equal((await message(b,'state',m=>m.revision===1)).snapshot.active.slideIndex,2);
+ await message(mobile,'state',m=>m.revision===1);
+ for(const ws of [a,b,mobile])ws.send(JSON.stringify({type:'ack',revision:1}));
+ await message(host,'presence',m=>m.leaderCount===3);
+ host.send(JSON.stringify({type:'ping'}));await message(host,'pong');
  const target={songIndex:0,sectionIndex:0,page:0,routeIndex:0};
  a.send(JSON.stringify({type:'navigate',target}));
  assert.deepEqual((await message(host,'navigate')).target,target);
  b.send(JSON.stringify({type:'publish',snapshot:{...snapshot,showName:'偽造'}}));
  await wait(100);
+ host.messages=[];
+ b.close();await new Promise(resolve=>b.once('close',resolve));
+ await message(host,'presence',m=>m.leaderCount===2);
  const newLeader=await open('leader'),stored=await message(newLeader,'state',m=>m.revision===1);
  assert.equal(stored.snapshot.showName,'測試');
+ newLeader.send(JSON.stringify({type:'ack',revision:1}));
+ await message(host,'presence',m=>m.leaderCount===3);
  console.log('Durable Object WebSocket integration passed');
 } finally{
  for(const ws of sockets)try{ws.close();}catch{}

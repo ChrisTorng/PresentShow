@@ -1,21 +1,23 @@
 import {songs, utilities, defaultPlans} from './singer-data.js';
 
 export function itemFor(song, name, catalog = songs) {
-  const normalized = name.replaceAll(' ', '');
-  const section = catalog[song].sections.findIndex(section => section.name.replaceAll(' ', '') === normalized);
+  const normalize=value=>value.replace(/\s+/g,'').replace(/橋段/g,'小副歌');
+  const normalized = normalize(name);
+  const section = catalog[song].sections.findIndex(section => normalize(section.name) === normalized);
   if (section >= 0) return {song, section};
-  if (utilities.includes(normalized)) return {song, utility:normalized};
+  if (utilities.includes(normalized.replace(/\d+$/,''))) return {song, utility:normalized};
   throw new Error(`「${catalog[song].title}」沒有段落「${name}」。`);
 }
 export function parsePlan(song, text, catalog = songs) {
   const parts = text.split(/[-→\n,，]+/).map(part => part.trim()).filter(Boolean);
   if (!parts.length) throw new Error('請至少安排一個段落。');
   return parts.flatMap(part => {
-    const match = /^(.*?)(?:\s*[×*]\s*(\d+))?$/.exec(part);
-    const count = Number(match[2] || 1);
+    const match = /^(.*?)(?:\s*[×*xX]\s*(\d+|\*))?$/.exec(part);
+    const loop = match[2] === '*';
+    const count = loop ? 1 : Number(match[2] || 1);
     if (count < 1 || count > 32) throw new Error('重複次數需介於 1 到 32。');
     const item = itemFor(song, match[1].trim(), catalog);
-    return Array.from({length:count}, () => ({...item}));
+    return Array.from({length:count}, () => ({...item,...(loop?{loop:true}:{})}));
   });
 }
 export function samePart(a, b) {
@@ -51,7 +53,7 @@ export class SingerSequence {
   entry(item) { return {...item, id:++this.serial, visited:false}; }
   get current() { return this.route[this.cursor]; }
   get nextSegment() {
-    return this.cue && this.cue.type !== 'page' ? this.route.find(item => item.id === this.cue.id) : this.route[this.cursor + 1] || null;
+    return this.cue && this.cue.type !== 'page' ? this.route.find(item => item.id === this.cue.id) : this.current.loop ? this.current : this.route[this.cursor + 1] || null;
   }
   get nextPage() {
     if (this.cue) return {item:this.route.find(item => item.id === this.cue.id), page:this.cue.page || 0};

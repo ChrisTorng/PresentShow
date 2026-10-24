@@ -13,7 +13,7 @@ export function mountLeader({onState,onError=()=>{}}){
  let client=null,hasData=false,singing=false,online=false;
  const status=message=>{get('leader-sync-status').textContent=message;};
  const showCover=(title,message,button=true)=>{get('leader-cover-title').textContent=title;get('leader-cover-message').textContent=message;get('leader-cover-connect').hidden=!button;cover.hidden=false;};
- const refresh=()=>{if(!hasData)showCover('等待主控設定','連線後會自動取得主控的歌曲、歌詞及播放順序。');else if(!singing)showCover('目前不是唱歌階段','主控切換至歌曲歌詞頁時，這裡會自動顯示。',false);else cover.hidden=true;chip.classList.toggle('offline',hasData&&!online);};
+ const refresh=()=>{if(!hasData)showCover('等待主控設定','連線後會自動取得主控的歌曲、歌詞及播放順序。');else if(!singing)showCover('目前不是敬拜階段','主控進入歌曲段落時，這裡會自動顯示。',false);else cover.hidden=true;chip.classList.toggle('offline',hasData&&!online);};
  const open=()=>{get('leader-settings-error').textContent='';panel.showModal();};
  get('leader-sync-settings').onclick=open;get('leader-cover-connect').onclick=open;
  get('leader-close').onclick=()=>panel.close();
@@ -27,7 +27,7 @@ export function mountLeader({onState,onError=()=>{}}){
     onStatus:s=>{status(s);if(s.includes('中斷')||s.includes('錯誤'))online=false;refresh();},
     onOpen:()=>{status('已連線，等待主控');client.send({type:'request'});},
     onPresence:isOnline=>{online=isOnline;status(isOnline?'主控在線 · 已同步':'主控離線');refresh();},
-    onState:(snapshot,rev)=>{if(!snapshot||snapshot.schema!==1)return;hasData=true;singing=!!snapshot.active?.singing;try{onState(snapshot);}catch(e){onError(e);status('資料套用失敗：'+e.message);}refresh();}
+    onState:(snapshot,rev)=>{if(!snapshot||snapshot.schema!==1)return false;hasData=true;singing=!!snapshot.active?.singing;try{onState(snapshot);}catch(e){onError(e);status('資料套用失敗：'+e.message);return false;}refresh();return true;}
    });panel.close();refresh();
   }catch(e){get('leader-settings-error').textContent=e.message;}
  };

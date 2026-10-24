@@ -146,11 +146,13 @@ body.console-open{height:100dvh;overflow:hidden}
 .program-panel{align-self:stretch}
 .next-panel,.next-panel.queued{display:flex;align-items:stretch;justify-content:stretch;min-width:0;background:#fbfcf9;border:3px solid #529071;outline:none;padding:0}
 .next-panel.queued{border-color:#d6a144;outline:none}
-.next-text-preview{display:flex;flex-direction:column;min-height:0;min-width:0;width:100%;height:100%;overflow:hidden;padding:12px 20px 14px;box-sizing:border-box;color:#1c3a30}
-.next-text-header{display:flex;gap:10px;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:#587263;min-height:22px}
+.next-text-preview{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,4fr);grid-template-rows:auto minmax(0,1fr);gap:8px 16px;min-height:0;min-width:0;width:100%;height:100%;overflow:hidden;padding:12px 20px 14px;box-sizing:border-box;color:#1c3a30}
+.next-text-header{grid-column:1/-1;display:flex;gap:10px;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:#587263;min-height:22px;min-width:0}
 .next-text-header strong{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.next-part-label{display:block;margin:6px 0 7px;font-size:clamp(22px,2.6vw,41px);line-height:1.12;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1a704b}
-.next-lyric-lines{flex:1;min-width:0;min-height:0;line-height:1.21;white-space:pre-wrap;overflow:hidden;overflow-wrap:anywhere;font-size:26px;font-weight:750;letter-spacing:.012em}
+.next-part-label{display:grid;grid-template-rows:minmax(0,1fr);align-items:stretch;margin:0;min-width:0;min-height:0;font-size:32px;line-height:1.12;font-weight:850;white-space:pre;overflow:hidden;color:#1a704b}
+.next-part-label.has-page{grid-template-rows:minmax(0,1fr) minmax(0,.75fr);gap:4px}
+.next-part-label>span{display:flex;align-items:center;min-width:0;min-height:0;overflow:hidden}
+.next-lyric-lines{display:flex;align-items:center;min-width:0;min-height:0;line-height:1.21;white-space:pre-wrap;overflow:hidden;overflow-wrap:anywhere;font-size:26px;font-weight:750;letter-spacing:.012em}
 .next-text-preview[data-kind="chorus"]{border-left:8px solid #c9653f}
 .next-text-preview[data-kind="chorus"] .next-part-label{color:#aa4e32}
 .next-text-preview[data-kind="prechorus"]{border-left:8px solid #b68f32}
@@ -161,9 +163,11 @@ body.console-open{height:100dvh;overflow:hidden}
 .next-text-preview[data-kind="tag"] .next-part-label{color:#875391}
 .slide-card{cursor:pointer;overflow:visible!important;border:0;user-select:none;min-width:0}
 .slide-card .faithful-thumb{border-radius:7px}
-.slide-card.editing-selected{outline:3px solid #1b809b!important;outline-offset:1px!important}
+.slide-card.editing-selected:not(.active):not(.queued){outline:3px solid #1b809b!important;outline-offset:1px!important}
 .slide-card .card-meta{border-radius:0 0 7px 7px}
-.song-part-label{position:absolute;top:4px;left:5px;max-width:calc(100% - 39px);padding:4px 8px;border-radius:5px;background:#f3fff4f2;color:#166547;font-size:clamp(15px,1.3vw,21px);line-height:1.12;font-weight:900;box-shadow:0 1px 5px #0003;z-index:5;pointer-events:none}
+.song-part-label{position:static;padding:2px 5px;border-radius:3px;background:#f3fff4f2;color:#166547;font-size:clamp(13px,1.1vw,18px);line-height:1.12;font-weight:900;pointer-events:none}
+.slide-card:has(.song-part-label) .card-meta{position:static;min-height:27px}
+.rail-sync #sync-leader-open{display:block;margin:8px 0;padding:7px;border:1px solid #a9bdb0;border-radius:6px;background:#fff;text-align:center;font-size:12px;font-weight:750;text-decoration:underline}
 .slide-card[data-lyric-kind="chorus"] .song-part-label{background:#fff0eaf5;color:#b04b30}
 .slide-card[data-lyric-kind="prechorus"] .song-part-label{background:#fff6d9f5;color:#916622}
 .slide-card[data-lyric-kind="instrumental"] .song-part-label{background:#f0f2fff5;color:#58669f}
@@ -187,14 +191,39 @@ body.console-open{height:100dvh;overflow:hidden}
 .next-text-preview[data-kind="instrumental"]{--lyric-ink:#5a725e;--lyric-tint:#e0e8da;--lyric-accent:#a0b193}
 .next-text-preview[data-kind]{border-left:8px solid var(--lyric-accent);background:#fff}
 .next-text-preview[data-kind] .next-part-label{color:var(--lyric-ink)}
-.next-panel:has([data-kind="verse"]){border-color:#86a9c7}
-.next-panel:has([data-kind="prechorus"]){border-color:#a59acb}
-.next-panel:has([data-kind="chorus"]){border-color:#bb95c1}
-.next-panel:has([data-kind="tag"]){border-color:#cfb17a}
-.next-panel:has([data-kind="instrumental"]){border-color:#a0b193}
 .next-panel.queued{outline:3px solid #d3a332;outline-offset:-3px}
 .slide-card[data-lyric-kind="verse"] .song-part-label{color:#305681;background:#d7e7f5f7}
 .slide-card[data-lyric-kind="prechorus"] .song-part-label{color:#5a518d;background:#e2def4f7}
 .slide-card[data-lyric-kind="chorus"] .song-part-label{color:#794580;background:#e9d6edf7}
 .slide-card[data-lyric-kind="tag"] .song-part-label{color:#91652b;background:#f6e3c8f7}
 .slide-card[data-lyric-kind="instrumental"] .song-part-label{color:#5a725e;background:#e0e8daf7}
+
+/* The invitation is a roomy top-layer panel, independent of the left rail. */
+.sync-popover{position:fixed;inset:60px 20px auto auto;margin:0;width:min(620px,calc(100vw - 32px));max-height:calc(100dvh - 80px);overflow:auto;padding:18px;background:#fff;border:1px solid #b8cdbf;box-shadow:0 12px 45px #173d302b;border-radius:12px;z-index:100}
+.sync-panel-heading{display:flex;align-items:center;justify-content:space-between;font-size:18px}
+.sync-panel-heading button{padding:4px 9px}
+.sync-popover p{font-size:13px;line-height:1.5}
+.sync-popover input,.sync-popover textarea{font-size:15px;padding:9px;line-height:1.5}
+.sync-popover #sync-room{font-family:Consolas,monospace;font-size:16px}
+.sync-popover .field-label{margin-top:12px;font-size:13px}
+.sync-popover #sync-leader-link{height:110px;resize:vertical;overflow-wrap:anywhere}
+.sync-popover #sync-qr{display:flex;justify-content:center;margin:12px 0 0}
+.sync-popover .sync-actions button{font-size:14px;padding:9px}
+.app-header .actions #sync-menu-button.synced{background:#dfebfa;border-color:#82a5cc;color:#234f7d}
+.app-header .actions #sync-menu-button.leaders-online{background:#285c4e;border-color:#285c4e;color:white}
+
+/* Leave the full right column to lyrics; the song name belongs above the section. */
+.next-text-preview{grid-template-rows:minmax(0,.3fr) minmax(0,1fr);gap:5px 14px;padding:10px 14px}
+.next-text-header{grid-column:1;grid-row:1;min-height:0;align-items:stretch;overflow:hidden}
+.next-text-header strong{display:flex;align-items:center;min-width:0;width:100%;height:100%;font-size:18px;white-space:normal;overflow-wrap:anywhere;line-height:1.15}
+.next-part-label{grid-column:1;grid-row:2}
+.next-lyric-lines{grid-column:2;grid-row:1 / -1;white-space:pre;overflow-wrap:normal;color:var(--lyric-ink)}
+.next-text-preview[data-kind="verse"]{background:#ebf2fa}
+.next-text-preview[data-kind="prechorus"]{background:#f1eefb}
+.next-text-preview[data-kind="chorus"]{background:#f5eefa}
+.next-text-preview[data-kind="tag"]{background:#fcf3e6}
+.next-text-preview[data-kind="instrumental"]{background:#eef2e8}
+.card-menu{top:auto;bottom:3px;opacity:0;pointer-events:none}
+.slide-card:hover .card-menu,.slide-card:focus-within .card-menu,.card-menu[open]{opacity:1;pointer-events:auto}
+.card-menu[open]{display:flex;flex-direction:column}
+.card-menu[open] summary{order:1}

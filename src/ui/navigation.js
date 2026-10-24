@@ -1,8 +1,16 @@
 import {sectionTarget} from '../config/songs.js';
 export class CueNavigation {
-  constructor(){this.reset();}
+  constructor(){this.iterations=new Map();this.reset();}
   reset(){this.pending=null;this.last=null;}
-  next(items,index){return this.pending ?? (items[index]?.seconds && items[index]?.autoNext!=null?items[index].autoNext:Math.min(index+1,items.length-1));}
+  next(items,index){return this.pending ?? items[index]?.loopNext ?? (items[index]?.seconds && items[index]?.autoNext!=null?items[index].autoNext:Math.min(index+1,items.length-1));}
+  iteration(items,index){return this.iterations.get(items[index]?.loopGroup)||1;}
+  advance(items,from,to){
+    const group=items[to]?.loopGroup;
+    if(group){
+      if(items[from]?.loopGroup!==group)this.iterations.set(group,1);
+      else if(items[from]?.loopNext===to)this.iterations.set(group,this.iteration(items,from)+1);
+    }
+  }
   target(items,index,key){
     const anchor=this.pending!==null && items[this.pending]?.song?.instance===items[index]?.song?.instance?this.pending:index;
     return sectionTarget(items,anchor,key);

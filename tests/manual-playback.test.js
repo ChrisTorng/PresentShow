@@ -46,8 +46,8 @@ test('YouTube events report state without changing volume or correcting playback
 });
 
 import {playbackPolicy} from '../src/player/playback-policy.js';
-test('all YouTube soundtrack pages and next previews use solid backgrounds with a normally visible player',()=>{
- for(const type of ['media','image','text','blank']){const item={type,layout:'roster',track:{kind:'youtube'},background:{type:'video',src:'bg.mp4',colors:['#fff','#ddd']}};const p=playbackPolicy(item);assert.equal(p.background.type,'solid');assert.equal(p.background.src,undefined);assert.equal(p.visible,true);assert.equal(item.background.type,'video');}
+test('YouTube soundtracks keep solid backgrounds and only show video on media pages',()=>{
+ for(const type of ['media','image','text','blank']){const item={type,layout:'roster',track:{kind:'youtube'},background:{type:'video',src:'bg.mp4',colors:['#fff','#ddd']}};const p=playbackPolicy(item);assert.equal(p.background.type,'solid');assert.equal(p.background.src,undefined);assert.equal(p.visible,type==='media');assert.equal(item.background.type,'video');}
  const next={type:'text',background:{type:'abstract'}};assert.equal(playbackPolicy(next,true).background.type,'solid');assert.equal(playbackPolicy(next,false).background.type,'abstract');
 });
 
@@ -55,5 +55,19 @@ test('switching YouTube to image and roster retains the exact player without pla
  const classes=[];const track={key:'prayer',kind:'youtube',src:'https://youtu.be/abcdefghijk'};
  const deck=new MediaDeck({},()=>{});const entry={track,active:true,root:{classList:{toggle:(...args)=>classes.push(args)}}};deck.current=entry;
  for(const type of ['image','text']){const policy=playbackPolicy({type,track,background:{type:'abstract'}});await deck.set({...track},{active:true,visible:policy.visible},()=>{});assert.equal(deck.current,entry);}
- assert.deepEqual(classes,[['audio-only',false],['audio-only',false]]);
+ assert.deepEqual(classes,[['audio-only',true],['audio-only',true]]);
+});
+
+test('outgoing video remains hidden while the silent audio loads and crossfades',async()=>{
+ const originalRequest=globalThis.requestAnimationFrame,originalCancel=globalThis.cancelAnimationFrame;
+ let tick,loaded;globalThis.requestAnimationFrame=callback=>{tick=callback;return 1;};globalThis.cancelAnimationFrame=()=>{};
+ const classes=new Set(),old={track:{key:'prayer',kind:'youtube'},gain:1,active:true,root:{style:{},classList:{add:name=>classes.add(name)}}};
+ const deck=new MediaDeck({},()=>{});deck.current=old;deck.settings=()=>{};deck.dispose=()=>{};
+ deck.create=async()=>{await new Promise(resolve=>{loaded=resolve;});deck.current={gain:0,root:{style:{}}};};
+ try{
+  const ready=deck.set({key:'silent',kind:'audio'},{active:true,visible:false,fade:1},()=>{});
+  assert.ok(classes.has('audio-only'));assert.equal(deck.outgoing,old);
+  loaded();await ready;assert.ok(classes.has('audio-only'));assert.equal(typeof tick,'function');
+  tick(performance.now()+500);assert.ok(old.gain>0&&old.gain<1);assert.ok(deck.current.gain>0&&deck.current.gain<1);
+ }finally{globalThis.requestAnimationFrame=originalRequest;globalThis.cancelAnimationFrame=originalCancel;}
 });

@@ -7,4 +7,5 @@ node_modules/
 test-results/
 dist/
 .vercel/
+cloudflare/.wrangler/
 .DS_Store

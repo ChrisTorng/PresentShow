@@ -3,6 +3,7 @@ import { stat } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { networkInterfaces } from 'node:os';
 
 export const defaultCorsOrigins = [
   'https://present-show.vercel.app',
@@ -32,7 +33,8 @@ export function createPresentShowServer({ root = process.cwd(), extraOrigins = p
  return http.createServer(async (req,res) => {
   res.setHeader('Vary', 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network');
   const origin = req.headers.origin;
-  const sameServerOrigins = [`http://localhost:${req.socket.localPort}`, `http://127.0.0.1:${req.socket.localPort}`];
+  const address = req.socket.localAddress?.replace(/^::ffff:/, '');
+  const sameServerOrigins = [`http://localhost:${req.socket.localPort}`, `http://127.0.0.1:${req.socket.localPort}`, `http://${address}:${req.socket.localPort}`];
   if (origin && !origins.has(origin) && !sameServerOrigins.includes(origin)) {
     res.writeHead(403);res.end('Origin not allowed');return;
   }
@@ -79,5 +81,11 @@ export function createPresentShowServer({ root = process.cwd(), extraOrigins = p
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PRESENTSHOW_PORT || 4173);
-  createPresentShowServer().listen(port, '127.0.0.1', () => console.log(`PresentShow: http://localhost:${port}`));
+  const host = process.env.PRESENTSHOW_HOST || '0.0.0.0';
+  createPresentShowServer().listen(port, host, () => {
+    console.log(`PresentShow: http://localhost:${port}`);
+    if (host === '0.0.0.0') for (const addresses of Object.values(networkInterfaces())) {
+      for (const address of addresses || []) if (address.family === 'IPv4' && !address.internal) console.log(`同網路連線: http://${address.address}:${port}/`);
+    }
+  });
 }
