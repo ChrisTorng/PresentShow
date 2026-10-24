@@ -37,10 +37,20 @@ export function mountLeader({onState,onError=()=>{}}){
   const queued=sequence.cue,item=queued?sequence.route.find(e=>e.id===queued.id):sequence.nextSegment;
   if(!item||item.end){status('此項目不是主控的歌詞頁，暫無投影對應');return;}
   const routePage=queued?.page||0;
-  client.send({type:'navigate',target:{songIndex:item.song,sectionIndex:item.section??-1,utility:item.utility||null,
+  client.send({type:'navigate',target:{songIndex:item.song,sectionIndex:item.section??0,utility:item.utility||null,
     page:item.pageRefs?.[routePage]??routePage,routePage,
     routeIndex:sequence.route.findIndex(e=>e.id===item.id)}});
  }
+ function navigateTo(target){
+  if(!hasData||!client?.connected){status('未連線，無法控制主控');return false;}
+  if(!online){status('主控離線，無法切換');return false;}
+  if(!target||!Number.isInteger(target.routeIndex)||target.routeIndex<0
+   ||!Number.isInteger(target.routePage)||target.routePage<0
+   ||!Number.isInteger(target.songIndex)||target.songIndex<0
+   ||!Number.isInteger(target.sectionIndex)||target.sectionIndex<0
+   ||!Number.isInteger(target.page)||target.page<0){status('無效的換頁要求');return false;}
+  return client.send({type:'navigate',target});
+ }
  refresh();if(validSyncRoom(roomInput.value.trim().toLowerCase())&&urlInput.value.trim())get('leader-connect').click();else open();
- return {navigate};
+ return {navigate,navigateTo};
 }
