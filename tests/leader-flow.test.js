@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {songs,defaultPlans} from '../src/leader/singer-data.js';
 import {SingerSequence} from '../src/leader/singer-sequence.js';
-import {fixedShortcutSlots,expandedRoute,navigationTarget,nextShortcutRow} from '../src/leader/leader-flow.js';
+import {fixedShortcutSlots,expandedRoute,navigationTarget,nextShortcutRow} from '../src/leader/leader4-flow.js';
 
 const plan = new SingerSequence(defaultPlans,songs);
 const rows = expandedRoute(plan.route,songs);
 
-test('Leader 3 keeps shortcut positions stable across all three songs',()=>{
+test('Leader 4 keeps shortcut positions stable across all three songs',()=>{
  const slots=fixedShortcutSlots(songs);
  const labels=slots.map(s=>s.label);
  assert.deepEqual(labels,['前奏','主歌1','主歌2','前副歌','副歌','副歌2','小副歌','橋段','間奏','尾句','尾奏']);

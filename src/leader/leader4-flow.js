@@ -1,4 +1,4 @@
-// Pure view model for Leader 3. Preserve occurrence indices from the controller.
+// Pure view model for Leader 4. Preserve occurrence indices from the controller.
 const compact=value=>String(value||'').replace(/\s+/g,'');
 const groups=['intro','verse','prechorus','chorus','tag','bridge','extra','interlude','last-line','outro'];
 const fixed=[

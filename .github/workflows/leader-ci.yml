@@ -27,3 +27,5 @@ jobs:
           node --check src/leader/leader1.js
           node --check src/leader/leader2.js
           node --check src/leader/leader3.js
+          node --check src/leader/leader4.js
+          node --check src/leader/leader4-flow.js

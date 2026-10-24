@@ -22,7 +22,7 @@ export class ControllerSync {
   if(!endpoint||!room)return;
   let base;
   try{base=normalizeEndpoint(endpoint);}catch{return;}
-  const variant=['1','2','3'].includes(this.get('sync-variant').value)?this.get('sync-variant').value:'3';
+  const variant=['1','2','3','4'].includes(this.get('sync-variant').value)?this.get('sync-variant').value:'3';
   const url=new URL('./leader'+variant+'.html',location.href);
   url.searchParams.set('room',room);url.searchParams.set('ws',base);
   this.get('sync-leader-link').value=url.href;
