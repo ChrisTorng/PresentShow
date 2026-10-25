@@ -2,6 +2,21 @@ import {songSections,defaultArrangement} from './arrangement.js';
 import {compactSectionName} from './songs.js';
 // Store a background cue at the exact sequence position, including a page inside a song.
 export function sequenceFor(raw,origin){return origin.section==null?raw.sequence:raw.sections[origin.section].sequence;}
+export function setMediaSource(raw,show,index,values){
+ const item=show.items[index],key=item?.track?.key;
+ const source=show.items.find(page=>key&&page.track?.key===key&&page.media&&typeof page.media==='object');
+ if(!source)throw Error('此頁沒有可編輯的媒體來源。');
+ const next=structuredClone(raw),origin=source.origin;
+ const owner=['page','group'].includes(origin.kind)?next.pages[source.id]:sequenceFor(next,origin)[origin.sequence];
+ if(!owner?.media||typeof owner.media!=='object')throw Error('找不到媒體設定。');
+ for(const [field,value] of Object.entries(values)){
+  const variable=typeof owner.media[field]==='string'&&/^\{\{([^}]+)\}\}$/.exec(owner.media[field]);
+  if(variable){next.variables??={};next.variables[variable[1].trim()]=value;}
+  else owner.media[field]=value;
+ }
+ owner.media.autoTitle=false;
+ return next;
+}
 export function setBackgroundCue(raw,item,background){
   const next=structuredClone(raw),{sequence,kind,sub}=item.origin;
   const list=sequenceFor(next,item.origin);

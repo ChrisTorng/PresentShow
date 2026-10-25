@@ -31,7 +31,7 @@ window.addEventListener('message',event=>{
   document.body.classList.toggle('youtube-underlay',policy.youtube&&item.type!=='media');
   document.body.style.setProperty('--quiet-background',`linear-gradient(130deg,${policy.background.colors[0]},${policy.background.colors[1]})`);
   const fade=msg.crossfade??item.crossfade??0;
-  deck.set(item.track,{active,playing:active?msg.playing:false,resume:msg.resume||0,fade,visible:policy.visible},()=>{
+  deck.set(item.track,{active,playing:active?msg.playing:false,resume:msg.resume,fade,visible:policy.visible},()=>{
    if(version!==renderVersion)return;
    const transition=fade?{type:'fade',duration:fade}:item.transition;
    item={...item,transition};background.setSuspended(policy.quiet||item.type==='web'||(item.type==='media'&&['youtube','video'].includes(item.track?.kind)));background.set(policy.background,msg.backgroundEpoch,policy.quiet?{type:'none',duration:0}:transition);drawForeground();

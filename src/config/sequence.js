@@ -99,7 +99,7 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
       }else add(entry,sequenceIndex);
     });
     change(section.endBackground,section.endTransition);
-    if(bookends && (items.at(-1)?.type!=='blank' || items.at(-1)?.background!==currentBackground))boundary('end');
+    if(bookends && section.endBlank!==false && (items.at(-1)?.type!=='blank' || items.at(-1)?.background!==currentBackground))boundary('end');
     meta.end=items.length-1;
     const songItems=items.slice(meta.start,meta.end+1).filter(p=>p.song);
     if(songItems.length){

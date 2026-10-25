@@ -1,4 +1,5 @@
 import {youtubeId} from '../config/model.js';
+import {mediaResume} from '../config/media-time.js';
 let apiPromise;
 function youtubeAPI(){
   if(window.YT?.Player)return Promise.resolve();
@@ -13,8 +14,9 @@ export class MediaDeck{
   constructor(host,onError,onStatus=()=>{}){this.host=host;this.onError=onError;this.onStatus=onStatus;this.current=null;this.outgoing=null;this.version=0;this.volume=80;this.shield=false;this.frame=0;this.outputGain=1;}
   dispose(entry){if(!entry)return;entry.alive=false;entry.cancelReady?.();clearTimeout(entry.timeout);if(entry.native){entry.native.pause();entry.native.removeAttribute('src');entry.native.load();}entry.player?.destroy?.();entry.root.remove();}
   finish(){cancelAnimationFrame(this.frame);this.dispose(this.outgoing);this.outgoing=null;if(this.current){this.current.gain=1;this.current.root.style.opacity='1';}this.settings();}
-  settings(){for(const e of [this.current,this.outgoing])if(e){const gain=(this.shield||!e.active?0:this.volume/100)*e.gain*this.outputGain;if(e.native){if(e.native.muted!==!e.active)e.native.muted=!e.active;if(e.native.volume!==gain)e.native.volume=gain;e.native.loop=e.track.loop;}const volume=Math.round(gain*100);if(e.ready&&e.appliedVolume!==volume){e.player?.setVolume(volume);e.appliedVolume=volume;}}}
+  settings(){for(const e of [this.current,this.outgoing])if(e){const gain=(this.shield||!e.active?0:this.volume/100)*e.gain*this.outputGain;if(e.native){if(e.native.muted!==!e.active)e.native.muted=!e.active;if(e.native.volume!==gain)e.native.volume=gain;e.native.loop=e.track.loop&&!(e.track.start>0);}const volume=Math.round(gain*100);if(e.ready&&e.appliedVolume!==volume){e.player?.setVolume(volume);e.appliedVolume=volume;}}}
   async create(track,opts){
+    const start=mediaResume(track,opts.resume);
     const root=document.createElement('div');root.className='media-entry';this.host.append(root);
     const e={root,track,active:opts.active,alive:true,gain:opts.fade?0:1,ready:false,wants:opts.playing};this.current=e;
     root.classList.toggle('audio-only',track.kind==='audio'||!opts.visible);root.style.opacity=String(e.gain);
@@ -23,9 +25,9 @@ export class MediaDeck{
         await youtubeAPI();if(!e.alive)return;
         await new Promise(resolve=>{
           e.cancelReady=resolve;const mount=document.createElement('div');root.append(mount);
-          e.player=new YT.Player(mount,{videoId:youtubeId(track.src),playerVars:{playsinline:1,controls:1,rel:0,origin:location.origin},events:{
-            onReady:()=>{if(!e.alive)return;e.ready=true;clearTimeout(e.timeout);this.settings();if(opts.resume)e.player.seekTo(opts.resume,true);if(e.wants)e.player.playVideo();this.publish(e);resolve();},
-            onStateChange:event=>{if(!e.alive)return;if(event.data===1&&this.current===e)this.onError('');this.publish(e);if(event.data===0 && e.track.loop){e.player.seekTo(0,true);e.player.playVideo();}},
+          e.player=new YT.Player(mount,{videoId:youtubeId(track.src),playerVars:{playsinline:1,controls:1,rel:0,start:Math.floor(start),origin:location.origin},events:{
+            onReady:()=>{if(!e.alive)return;e.ready=true;clearTimeout(e.timeout);this.settings();if(start)e.player.seekTo(start,true);if(e.wants)e.player.playVideo();this.publish(e);resolve();},
+            onStateChange:event=>{if(!e.alive)return;if(event.data===1&&this.current===e)this.onError('');this.publish(e);if(event.data===0 && e.track.loop){e.player.seekTo(e.track.start||0,true);e.player.playVideo();}},
             onAutoplayBlocked:()=>{if(e.alive&&this.current===e)this.onError('YouTube 尚未允許播放，請按「啟用播放」。');},
             onError:event=>{if(e.alive&&this.current===e){this.onError(`YouTube 無法播放（${event.data}）。可改用本機媒體。`);resolve();}}
           }});
@@ -34,7 +36,10 @@ export class MediaDeck{
       }catch(error){if(e.alive&&this.current===e)this.onError(error.message);}
     }else{
       e.native=document.createElement(track.kind==='audio'?'audio':'video');const media=e.native;media.playsInline=true;media.preload='auto';media.muted=!opts.active;if(track.cors)media.crossOrigin='anonymous';media.src=track.src;root.append(media);this.settings();
-      await new Promise(resolve=>{e.cancelReady=resolve;e.timeout=setTimeout(resolve,8000);media.onloadeddata=()=>{if(e.alive && opts.resume)media.currentTime=opts.resume;clearTimeout(e.timeout);resolve();};media.onerror=()=>{if(e.alive&&this.current===e)this.onError('找不到媒體或格式不支援。');clearTimeout(e.timeout);resolve();};});
+      media.onloadedmetadata=()=>{if(e.alive&&start)media.currentTime=start;};
+      media.onplay=media.onpause=()=>this.publish(e);
+      media.onended=()=>{if(!e.alive)return;if(e.track.loop){media.currentTime=e.track.start||0;if(e.wants)this.playEntry(e,true);}else e.wants=false;this.publish(e);};
+      await new Promise(resolve=>{e.cancelReady=resolve;e.timeout=setTimeout(resolve,8000);media.onloadeddata=()=>{if(e.alive&&start&&media.currentTime<start)media.currentTime=start;clearTimeout(e.timeout);resolve();};media.onerror=()=>{if(e.alive&&this.current===e)this.onError('找不到媒體或格式不支援。');clearTimeout(e.timeout);resolve();};});
       if(e.alive && e.wants)await this.playEntry(e,true);
     }
     return e;

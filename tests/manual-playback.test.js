@@ -71,3 +71,22 @@ test('outgoing video remains hidden while the silent audio loads and crossfades'
   tick(performance.now()+500);assert.ok(old.gain>0&&old.gain<1);assert.ok(deck.current.gain>0&&deck.current.gain<1);
  }finally{globalThis.requestAnimationFrame=originalRequest;globalThis.cancelAnimationFrame=originalCancel;}
 });
+
+test('a manual non-looping video loads paused, holds its last frame and replays on request',async()=>{
+ const original=globalThis.document;let video,plays=0;const reports=[];
+ globalThis.document={createElement(tag){
+  const element={style:{},classList:{toggle(){}},append(){},remove(){},removeAttribute(){},load(){},paused:true,currentTime:0,duration:10,readyState:4,
+   pause(){this.paused=true;this.onpause?.();},play(){plays++;this.paused=false;this.onplay?.();return Promise.resolve();}};
+  if(tag==='video'){video=element;Object.defineProperty(element,'src',{set(){queueMicrotask(()=>{element.onloadedmetadata?.();element.onloadeddata?.();});}});}
+  return element;
+ }};
+ const deck=new MediaDeck({append(){}},message=>assert.equal(message,''),state=>reports.push(state));
+ try{
+  await deck.create({key:'slogan',kind:'video',src:'slogan.mp4',start:0,loop:false,autoplay:false},{active:true,playing:false,visible:true});
+  assert.equal(video.paused,true);assert.equal(plays,0);assert.equal(video.loop,false);
+  await deck.playEntry(deck.current,true);assert.equal(plays,1);assert.equal(reports.at(-1).playing,true);
+  video.currentTime=10;video.paused=true;video.onended();
+  assert.equal(video.currentTime,10);assert.equal(plays,1);assert.equal(deck.current.wants,false);assert.equal(reports.at(-1).playing,false);
+  deck.seek(0);await deck.playEntry(deck.current,true);assert.equal(video.currentTime,0);assert.equal(plays,2);assert.equal(reports.at(-1).playing,true);
+ }finally{deck.dispose(deck.current);globalThis.document=original;}
+});

@@ -4,6 +4,10 @@ export class CueNavigation {
   reset(){this.pending=null;this.last=null;}
   next(items,index){return this.pending ?? items[index]?.loopNext ?? (items[index]?.seconds && items[index]?.autoNext!=null?items[index].autoNext:Math.min(index+1,items.length-1));}
   iteration(items,index){return this.iterations.get(items[index]?.loopGroup)||1;}
+  nextIteration(items,index,target=this.next(items,index)){
+    if(!items[target]?.loopGroup||items[target].loopGroup!==items[index]?.loopGroup)return 1;
+    return this.iteration(items,index)+(items[index].loopNext===target?1:0);
+  }
   advance(items,from,to){
     const group=items[to]?.loopGroup;
     if(group){

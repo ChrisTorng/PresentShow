@@ -1,6 +1,9 @@
 import {DEFAULT_BACKGROUND,normalizeBackground} from '../backgrounds/config.js';
 import {parseSongs} from './songs.js';
 import {expandSequence} from './sequence.js';
+import {annotateSongRepeats} from './repeats.js';
+import {mediaStart} from './media-time.js';
+import {uiLabels} from './ui-labels.js';
 export function youtubeId(src) {
   try {
     const u = new URL(src);
@@ -28,6 +31,7 @@ export function compile(raw, now = new Date()) {
   const defaultBackground=config.background || Object.keys(backgrounds)[0];
   if(!Object.hasOwn(backgrounds,defaultBackground))throw new Error(`找不到預設背景：${defaultBackground}`);
   const {items,sections}=expandSequence(config,songs,backgrounds,defaultBackground);
+  annotateSongRepeats(items);
   let track = null;
   let background=backgrounds[defaultBackground];
   items.forEach((item,index) => {
@@ -40,14 +44,15 @@ export function compile(raw, now = new Date()) {
       const media = item.media;
       if (typeof media !== 'object' || !media.src || !['youtube','audio','video'].includes(media.kind)) throw new Error(`${item.id}：media 需要 kind（youtube/audio/video）與 src。`);
       if (media.kind === 'youtube' && !youtubeId(media.src)) throw new Error(`${item.id}：無效的 YouTube 網址。`);
-      track = {...media,key:`${JSON.stringify(item.origin)}:${media.src}`,loop:media.loop !== false};
+      const start=mediaStart(media);
+      track = {...media,start,startInput:media.start??'',key:`${JSON.stringify(item.origin)}:${media.src}:${start}`,loop:media.loop !== false};
     } else if (item.media !== 'keep') track = null;
     item.track = track ? {...track} : null;
     if (item.type === 'media' && !track) throw new Error(`${item.id}：媒體頁需要 media。`);
     if (!Object.hasOwn(item,'autoNext')) item.autoNext = item.seconds ? (index+1 < items.length ? index+1 : null) : null;
     if (item.autoNext >= items.length) item.autoNext = null;
   });
-  return {name:config.name || '未命名投影',items,variables:vars,backgrounds,songs,sections,leaderPlans:config.leaderPlans || {}};
+  return {name:config.name || '未命名投影',labels:uiLabels(vars),items,variables:vars,backgrounds,songs,sections,leaderPlans:config.leaderPlans || {}};
 }
 export function resolveAsset(src, base, assets = new Map()) {
   const clean = src.replaceAll('\\','/').replace(/^\.\//,'');

@@ -8,3 +8,19 @@
 .leader-sync-dialog::backdrop{background:#0009}.leader-sync-dialog h2{margin:0 0 12px;font-size:21px}.leader-sync-dialog label{display:grid;gap:6px;margin:12px 0;font-size:13px;font-weight:600}
 .leader-sync-dialog input{width:100%;font:inherit;border:1px solid #abbfb3;border-radius:8px;padding:9px;background:white}
 .leader-sync-dialog p{color:#a53424;min-height:1em}.leader-dialog-actions{display:flex;justify-content:flex-end;gap:8px}
+
+.singer-app[hidden],.leader-readonly-app[hidden]{display:none!important}
+.leader-readonly-app{position:fixed;inset:0;z-index:10;background:#fff;color:#29443a;padding:12px;display:grid;grid-template-rows:auto auto minmax(0,1fr);gap:10px}
+.leader-readonly-app h1{font-size:26px;margin:0}.leader-readonly-app nav{display:flex;gap:8px}.leader-readonly-app nav button{padding:8px 18px;background:#eef2e8;border:1px solid #a0b193;border-radius:9px;color:#29443a}
+.leader-readonly-list{overflow:auto;display:flex;flex-direction:column;gap:12px;padding:5px 5px 45px}
+.leader-readonly-item{border:1px solid #a0b193;border-radius:12px;background:#eef2e8;padding:12px;white-space:pre-wrap}
+.leader-readonly-item strong{font-size:23px}.leader-readonly-item p{font-size:19px;line-height:1.4;margin:8px 0}
+.leader-readonly-item.active{outline:3px solid #357357}.leader-readonly-item.queued{border:3px solid #d3a332;padding:10px}
+.leader-awake-status{font-size:9px;opacity:.7;padding-right:5px}.leader-awake-status.locked{color:#357357;opacity:1}
+
+/* Only access mode is visible during normal operation; diagnostics appear on failure. */
+.leader-sync-chip{bottom:auto;top:62px;right:12px;flex-wrap:wrap;gap:3px 5px;padding:2px 5px;font-size:10px;line-height:1.25;max-width:min(80vw,270px);background:#fff;color:#345c4b}
+.leader-sync-chip #leader-sync-status,.leader-sync-chip .leader-awake-status{font-size:9px;color:#a13b2e}
+.leader-sync-chip #leader-sync-status:not([hidden]){flex-basis:100%;order:3}
+.leader-sync-chip .leader-awake-status:not([hidden]){flex-basis:100%;order:4}
+.leader-view-only .flow-page,.leader-view-only .flow-title,.leader-view-only .flow-interlude{cursor:default}

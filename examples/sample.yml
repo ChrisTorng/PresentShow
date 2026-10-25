@@ -1,11 +1,11 @@
 name: 相聚時刻 · 示範投影
 variables:
+  # 第一區：首次使用請修改；單位、固定聚會時間與奉獻資訊，之後通常不需變動。
+  leaderName: 主領
+  worshipName: 敬拜
   venue: 拾光交流空間
-  date: 2026/9/20
   meeting1Time: 9:40
   meeting1Name: 晨間靜心
-  music1: https://www.youtube.com/watch?v=M7lc1UVf-VE
-  music2: https://www.youtube.com/watch?v=M7lc1UVf-VE
   meeting2Time: 10:30
   meeting2Name: 週末分享會
   bank: 000 示範銀行
@@ -16,6 +16,21 @@ variables:
   scriptureText: 讓我們用傾聽拉近距離，用分享點亮彼此。
   reminder: 請將手機設為靜音或震動
   prepare: 預備心，一起迎接美好時刻
+
+  # 第二區：每次聚會請檢查；日期、會前／靜默／回應與報告網址。
+  # Start 留空時依 URL 的 t=；可填 62 或 1:02，填 0 則從頭開始。
+  date: 2026/9/20
+  music1: https://www.youtube.com/watch?v=M7lc1UVf-VE
+  music1Title: '晨間音樂（示範影片）'
+  music1Start: ''
+  music2: https://www.youtube.com/watch?v=M7lc1UVf-VE
+  music2Title: '靜默示範音樂'
+  music2Start: ''
+  responseURL: 'https://www.youtube.com/watch?v=M7lc1UVf-VE'
+  responseTitle: '回應音樂（示範影片）'
+  responseStart: ''
+  announcementsURL: 'https://example.com/'
+
 pages:
   blank:
     type: blank
@@ -40,8 +55,9 @@ pages:
     media:
       kind: youtube
       src: '{{music1}}'
+      start: '{{music1Start}}'
       loop: true
-      label: 晨間音樂（示範影片）
+      label: '{{music1Title}}'
       autoTitle: false
   prayImage:
     type: image
@@ -55,9 +71,10 @@ pages:
     background: quiet
     media:
       kind: audio
-      src: ./quiet-demo.wav
+      src: '{{music2}}'
+      start: '{{music2Start}}'
       loop: true
-      label: 原創靜心示範
+      label: '{{music2Title}}'
     blocks:
       - kind: eyebrow
         text: 給自己一段安靜的時間
@@ -237,15 +254,16 @@ pages:
   announcements:
     type: web
     label: 活動消息
-    src: https://example.com/
+    src: '{{announcementsURL}}'
     transition: {type: none, duration: 0}
   responseSong:
     type: media
     label: 回應音樂
     media:
       kind: youtube
-      src: https://www.youtube.com/watch?v=M7lc1UVf-VE
-      label: 回應音樂（示範影片）
+      src: '{{responseURL}}'
+      start: '{{responseStart}}'
+      label: '{{responseTitle}}'
       autoTitle: false
       loop: false
 background: dawn

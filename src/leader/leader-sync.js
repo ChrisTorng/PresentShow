@@ -11,13 +11,16 @@ export function normalizeEndpoint(value) {
   url.pathname=url.pathname.replace(/\/$/,'');url.search='';url.hash='';
   return url.toString().replace(/\/$/,'');
 }
-export function createSyncClient({endpoint,room,role,hostKey,onStatus=()=>{},onOpen=()=>{},onState=()=>{},onNavigate=()=>{},onPresence=()=>{}}) {
+export function createSyncClient({endpoint,room,role,hostKey,controlKey,onStatus=()=>{},onOpen=()=>{},onState=()=>{},onNavigate=()=>{},onPresence=()=>{},onAccess=()=>{},onDenied=()=>{}}) {
   if(!validSyncRoom(room))throw Error('連線代碼必須是 32 位十六進位字元');
   if(role!=='leader' && role!=='controller')throw Error('Invalid role');
   const base=normalizeEndpoint(endpoint), params=new URLSearchParams({role});
   if(role==='controller') {
     if(!/^[a-f0-9]{64}$/.test(hostKey||''))throw Error('Invalid host key');
     params.set('key',hostKey);
+    if(controlKey)params.set('controlKey',controlKey);
+  }else if(controlKey){
+    params.set('control',controlKey);
   }
   const target=base+'/ws/'+room+'?'+params.toString();
   let socket,active=true,tries=0,timer,heartbeat,connected=false,revision=0,lastPong=0;
@@ -40,7 +43,9 @@ export function createSyncClient({endpoint,room,role,hostKey,onStatus=()=>{},onO
           revision=msg.revision;const applied=onState(msg.snapshot,msg.revision);
           if(role==='leader'&&applied!==false)send({type:'ack',revision});
         } else if(msg.type==='navigate' && role==='controller')onNavigate(msg.target);
-        else if(msg.type==='presence')onPresence(msg.controllerOnline,msg.leaderCount??0);
+        else if(msg.type==='presence')onPresence(msg.controllerOnline,msg.leaderCount??0,{control:msg.controlCount??0,view:msg.viewCount??msg.leaderCount??0});
+        else if(msg.type==='access')onAccess(msg.canControl===true);
+        else if(msg.type==='denied'){active=false;connected=false;clearInterval(heartbeat);status(msg.error);onDenied(msg.error);socket.close();}
         else if(msg.type==='pong')lastPong=Date.now();
         else if(msg.type==='error')status('同步錯誤：'+msg.error);
       }catch(err){status('接收資料錯誤：'+err.message);}

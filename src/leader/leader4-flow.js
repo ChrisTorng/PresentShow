@@ -1,4 +1,5 @@
 // Shortcut slots are the union of the loaded songs and their actual route.
+import {repeatRuns} from '../config/repeats.js';
 const compact=value=>String(value||'').replace(/\s+/g,'').replace(/橋段/g,'小副歌');
 const groups=['intro','verse','prechorus','chorus','tag','interlude','extra','last-line','outro'];
 const kinds={主歌:'verse',前副歌:'prechorus',副歌:'chorus',小副歌:'tag',尾句:'last-line'};
@@ -44,7 +45,7 @@ export function songBrowseTarget(songIndex,active,lastPositions){
  return lastPositions.get(songIndex)?.routeIndex??null;
 }
 export function expandedRoute(route,catalog){
- let previousKey=null,occurrence=0;
+ const runs=repeatRuns(route,item=>JSON.stringify([item.song,item.utility,item.section,!!item.end]));
  return route.map((item,routeIndex)=>{
   if(item.end)return {end:true,routeIndex,song:item.song,name:'結束',kind:'ending',pages:[]};
   const song=catalog[item.song];
@@ -52,15 +53,12 @@ export function expandedRoute(route,catalog){
   const section=item.utility?null:song.sections[item.section];
   if(!item.utility&&!section)return null;
   const name=item.utility||compact(section.name);
-  const key=[item.song,item.utility||('section:'+item.section)].join(':');
-  occurrence=key===previousKey?occurrence+1:1;
-  previousKey=key;
-  const next=route[routeIndex+1],repeated=occurrence>1||!!next&&!next.end&&next.song===item.song&&next.utility===item.utility&&next.section===item.section;
+  const {occurrence,total}=item.repeat||runs[routeIndex],repeated=total>1;
   const refs=item.pageRefs?.length?item.pageRefs:(item.utility?[0]:section.pages.map((_,i)=>i));
   const texts=item.utility?[item.utility]:refs.map(i=>section.pages[i]).filter(t=>t!==undefined);
   return {song:item.song,section:item.utility?-1:item.section,utility:item.utility||null,
    routeIndex,name,kind:item.utility?'instrumental':section.kind==='bridge'?'tag':section.kind||'verse',
-   occurrence,repeated,loop:!!item.loop,slot:slotFor(item,catalog),
+   occurrence,total,repeated,loop:!!item.loop,slot:slotFor(item,catalog),
    pages:texts.map((text,routePage)=>({routePage,sourcePage:refs[routePage],lines:String(text).split(/\r?\n/)}))
   };
  }).filter(Boolean);

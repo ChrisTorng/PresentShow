@@ -199,18 +199,25 @@ body.console-open{height:100dvh;overflow:hidden}
 .slide-card[data-lyric-kind="instrumental"] .song-part-label{color:#5a725e;background:#e0e8daf7}
 
 /* The invitation is a roomy top-layer panel, independent of the left rail. */
-.sync-popover{position:fixed;inset:60px 20px auto auto;margin:0;width:min(620px,calc(100vw - 32px));max-height:calc(100dvh - 80px);overflow:auto;padding:18px;background:#fff;border:1px solid #b8cdbf;box-shadow:0 12px 45px #173d302b;border-radius:12px;z-index:100}
+.sync-popover{position:fixed;inset:60px 16px auto auto;margin:0;box-sizing:border-box;width:min(940px,calc(100vw - 32px));max-height:calc(100dvh - 80px);overflow:auto;padding:16px;background:#fff;border:1px solid #b8cdbf;box-shadow:0 12px 45px #173d302b;border-radius:12px;z-index:100}
+.sync-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;margin-top:8px}
+.sync-columns>div{min-width:0}
+.sync-columns #sync-invitation{padding-left:24px;border-left:1px solid #d9e4dc}
+.sync-columns input,.sync-columns textarea,.sync-columns select{box-sizing:border-box;width:100%;min-width:0}
+.sync-columns #sync-variant{padding:6px 9px;font-size:15px;border:1px solid #b8cdbf;border-radius:6px;background:#fff;color:#234e43}
+.sync-columns #sync-invitation>.field-label:first-child{margin-top:0}
 .sync-panel-heading{display:flex;align-items:center;justify-content:space-between;font-size:18px}
 .sync-panel-heading button{padding:4px 9px}
 .sync-popover p{font-size:13px;line-height:1.5}
 .sync-popover input,.sync-popover textarea{font-size:15px;padding:9px;line-height:1.5}
 .sync-popover #sync-room{font-family:Consolas,monospace;font-size:16px}
 .sync-popover .field-label{margin-top:12px;font-size:13px}
-.sync-popover #sync-leader-link{height:110px;resize:vertical;overflow-wrap:anywhere}
+.sync-popover #sync-leader-link{height:105px;resize:vertical;overflow-wrap:anywhere}
 .sync-popover #sync-qr{display:flex;justify-content:center;margin:12px 0 0}
 .sync-popover .sync-actions button{font-size:14px;padding:9px}
-.app-header .actions #sync-menu-button.synced{background:#dfebfa;border-color:#82a5cc;color:#234f7d}
-.app-header .actions #sync-menu-button.leaders-online{background:#285c4e;border-color:#285c4e;color:white}
+.app-header .actions #sync-menu-button.connected{background:#a64442;border-color:#a64442;color:white}
+.app-header .actions #sync-menu-button.synced{background:#285c4e;border-color:#285c4e;color:white}
+@media(max-width:600px){.sync-popover{inset:60px 8px auto auto;width:calc(100vw - 16px)}.sync-columns{grid-template-columns:1fr;gap:16px}.sync-columns #sync-invitation{border-left:0;border-top:1px solid #d9e4dc;padding:16px 0 0}}
 
 /* Leave the full right column to lyrics; the song name belongs above the section. */
 .next-text-preview{grid-template-rows:minmax(0,.3fr) minmax(0,1fr);gap:5px 14px;padding:10px 14px}
@@ -227,3 +234,35 @@ body.console-open{height:100dvh;overflow:hidden}
 .slide-card:hover .card-menu,.slide-card:focus-within .card-menu,.card-menu[open]{opacity:1;pointer-events:auto}
 .card-menu[open]{display:flex;flex-direction:column}
 .card-menu[open] summary{order:1}
+
+.app-header .actions button.needs-save{background:#fff1bd;border:2px solid #b37a08;color:#704400;font-weight:850;box-shadow:0 0 0 2px #e9b54b35}
+.next-text-preview{position:relative}
+.next-page-badge{position:absolute;right:7px;bottom:5px;padding:2px 6px;border-radius:5px;background:#ffffffa8;color:var(--lyric-ink);font-size:clamp(12px,1.1vw,18px);font-weight:650;line-height:1.2;pointer-events:none;opacity:.8}
+.next-page-badge:empty{display:none}
+.media-fields{display:grid;gap:12px;min-width:min(480px,70vw)}
+.media-fields label{display:grid;gap:5px;font-size:14px}
+.media-fields input,.media-fields select{padding:9px;border:1px solid #adc4b5;border-radius:6px;width:100%;background:#fff;color:#234}
+
+/* The complete worship caption strip uses the Leader palette. */
+.slide-card .card-meta{position:static;background:#fff;min-height:29px}
+.slide-card[data-lyric-kind="verse"] .card-meta{background:#ebf2fa;color:#305681}
+.slide-card[data-lyric-kind="prechorus"] .card-meta{background:#f1eefb;color:#5a518d}
+.slide-card[data-lyric-kind="chorus"] .card-meta{background:#f5eefa;color:#794580}
+.slide-card[data-lyric-kind="tag"] .card-meta{background:#fcf3e6;color:#91652b}
+.slide-card[data-lyric-kind="instrumental"] .card-meta{background:#eef2e8;color:#5a725e}
+.slide-card .song-part-label{background:transparent!important;color:inherit!important;padding:2px 0;flex:1}
+.slide-card .card-page{flex-shrink:0;min-width:28px;text-align:right;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.slide-card .card-menu{position:relative;right:auto;bottom:auto;top:auto;flex-shrink:0;min-width:26px;font-size:12px}
+.slide-card .card-menu[open]{display:block;box-shadow:none;background:transparent}
+.card-menu .card-menu-actions{position:absolute;right:0;bottom:calc(100% + 3px);background:#fff;box-shadow:0 6px 24px #0004;border-radius:7px;overflow:hidden}
+.card-menu summary{min-width:26px;padding:0 5px}
+.next-text-preview.reading-preview{background:#fff;border-left:0}
+.reading-preview .next-lyric-lines{display:block;align-content:center;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.3;color:#29443a;font-weight:650}
+.reading-preview .next-part-label{color:#29443a}
+.sync-control-option{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:750}
+.sync-columns .sync-control-option input{width:auto;flex:none}
+.sync-popover #sync-link-mode{margin:4px 0 8px;font-size:12px}
+.sync-popover #sync-leader-link{height:142px;font-size:13px;line-height:1.4}
+.sync-share-actions{display:flex;gap:12px;align-items:center;margin-top:10px}
+.sync-share-actions #sync-leader-open{flex:1}
+.sync-popover .sync-share-actions #sync-qr{margin:0;flex:none}

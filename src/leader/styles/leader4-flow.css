@@ -33,8 +33,7 @@ html,body{height:100%;overflow:hidden;background:#fff;color-scheme:light}
 .flow-group{display:grid;grid-template-columns:clamp(65px,25%,125px) minmax(0,1fr);min-width:0;overflow:hidden;border:1px solid var(--accent);background:var(--wash);border-radius:13px;color:var(--ink);flex-shrink:0}
 .flow-group.instrumental{display:block}
 .flow-title{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:6px;min-width:0;padding:8px 4px;border:0;background:transparent;color:var(--ink);text-align:left;font-size:clamp(19px,5vw,34px);font-weight:800;line-height:1.13;white-space:nowrap}
-.flow-occurrence{font-size:10px;font-weight:650;opacity:.8}
-.flow-group[data-loop] .flow-occurrence::after{content:'∞';display:block;font-size:16px;line-height:1.1}
+.flow-occurrence{font-size:1em;font-weight:750;opacity:.9}
 .flow-page-list{display:grid;min-width:0}
 .flow-page{position:relative;display:block;min-width:0;min-height:62px;padding:8px 7px;color:var(--ink);border:0;border-left:1px solid var(--accent);border-bottom:1px solid var(--accent);background:transparent;text-align:left;overflow:hidden}
 .flow-page:last-child{border-bottom:0}
@@ -43,7 +42,7 @@ html,body{height:100%;overflow:hidden;background:#fff;color-scheme:light}
 .flow-group.past:not(.active){opacity:.75}
 .flow-interlude{width:100%;min-height:62px;display:flex;align-items:center;padding:9px 12px;background:transparent;color:var(--ink);border:0;text-align:left;font-size:clamp(23px,5.5vw,34px);font-weight:800}
 .flow-end{text-align:center;padding:12px;color:#768471;font-weight:750}
-.flow-frame{position:absolute;pointer-events:none;box-sizing:border-box;border-radius:13px;border:3px solid;transition:height .44s ease,width .44s ease;z-index:4}
+.flow-frame{position:absolute;pointer-events:none;box-sizing:border-box;border-radius:13px;border:3px solid;transition:height .26s ease,width .26s ease;z-index:4}
 .flow-frame[hidden]{display:none}
 .current-frame{border-color:var(--playing-color);box-shadow:0 0 0 1px #fff9}
 .next-frame{border-color:var(--next-color);z-index:5;border-radius:8px}
@@ -60,3 +59,13 @@ html,body{height:100%;overflow:hidden;background:#fff;color-scheme:light}
  .flow-page{min-height:45px}
 }
 @media(prefers-reduced-motion:reduce){.flow-frame{transition:none}}
+
+.readonly-group{min-height:45px;padding:10px 12px;cursor:default}
+.readonly-title{display:block;font-size:clamp(19px,4.8vw,28px);line-height:1.25}
+.readonly-title:empty{display:none}
+.readonly-content{padding:7px 0;font-size:clamp(15px,3.8vw,23px);line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.readonly-timer{display:block;font-size:12px;opacity:.7}
+.readonly-shortcut{font-size:clamp(11px,3vw,17px);line-height:1.2;white-space:normal;overflow-wrap:anywhere}
+.flow-scroll.readonly .flow-page,.flow-scroll.readonly .flow-title,.flow-scroll.readonly .flow-interlude{cursor:default}
+.leader-awake-status{font-size:9px;opacity:.7;padding-right:5px}
+.leader-awake-status.locked{color:#357357;opacity:1}
