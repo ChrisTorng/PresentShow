@@ -17,11 +17,11 @@ test('one-time labels reach the Leader snapshot without changing lyrics or expos
 test('synchronized with no Leaders is green; connected Leaders are red with separate access counts',()=>{
  const previous=globalThis.document;globalThis.document={querySelectorAll:()=>[]};
  const classes=new Set(),button={classList:{toggle:(key,value)=>value?classes.add(key):classes.delete(key)}};
- const sync=Object.create(ControllerSync.prototype);sync.get=()=>button;sync.getShow=()=>({labels:{leader:'帶領者',worship:'讚美'}});sync.client={connected:true};sync.leaderCount=0;
+ const sync=Object.create(ControllerSync.prototype);sync.get=()=>button;sync.getShow=()=>({labels:{leader:'帶領者',worship:'讚美'}});sync.client={connected:true};sync.leaderCount=0;sync.counts={view:0,cue:0,control:0};
  try{
   sync.renderStatus();assert.equal(button.textContent,'帶領者 同步中 · 0');assert.ok(!classes.has('connected'));assert.ok(!classes.has('synced'));
   sync.synced=true;sync.renderStatus();assert.equal(button.textContent,'帶領者 已同步 · 0');assert.ok(classes.has('synced'));assert.ok(!classes.has('connected'));
-  sync.leaderCount=2;sync.counts={control:1,view:1};sync.renderStatus();assert.equal(button.textContent,'帶領者 已連線 · 控制 1／瀏覽 1');assert.ok(classes.has('connected'));assert.ok(!classes.has('synced'));
+  sync.leaderCount=3;sync.counts={view:1,cue:1,control:1};sync.renderStatus();assert.equal(button.textContent,'帶領者 已連線 · 瀏覽 1／預約 1／控制 1');assert.ok(classes.has('connected'));assert.ok(!classes.has('synced'));
   sync.client.connected=false;sync.renderStatus();assert.equal(button.textContent,'帶領者 未同步 · 0');assert.equal(classes.size,0);
  }finally{globalThis.document=previous;}
 });

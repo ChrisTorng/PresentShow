@@ -1,5 +1,5 @@
-// Keep both on-air and queued references when a configuration is recompiled.
-export function remapPosition(previous,next,index){
+// Keep playback references when a configuration is recompiled.
+export function remapPosition(previous,next,index,{fallback=true}={}){
   if(!Number.isInteger(index)||!previous?.items[index])return null;
   const old=previous.items[index];
   const sameSection=item=>item.section.id===old.section.id;
@@ -13,6 +13,7 @@ export function remapPosition(previous,next,index){
   if(exact)return exact.i;
   const ordinal=previous.items.slice(0,index).filter(item=>sameSection(item)&&identity(item)).length;
   if(matches.length)return matches[Math.min(ordinal,matches.length-1)].i;
+  if(!fallback)return null;
   const section=next.sections.find(section=>section.id===old.section.id);
   return section?Math.min(section.end,section.start+index-previous.sections[old.section.index].start):Math.min(index,next.items.length-1);
 }

@@ -21,6 +21,8 @@ test('unbounded chorus uses one route entry, wraps all its pages, counts iterati
  }
  assert.equal(at,start);assert.equal(nav.iteration(show.items,at),21);
  assert.equal(nav.next(show.items,last),start);
+ nav.advance(show.items,start,nav.previous,true);assert.equal(nav.iteration(show.items,last),20);
+ nav.advance(show.items,last,nav.previous,true);assert.equal(nav.iteration(show.items,start),20);
  const outro=show.items.findIndex(item=>item.song?.utility==='尾奏');
  nav.pending=outro;assert.equal(nav.next(show.items,last),outro);
  nav.advance(show.items,last,outro);nav.reset();assert.notEqual(nav.next(show.items,outro),start);
@@ -46,4 +48,5 @@ test('editing lyrics and inserting a preceding page preserves both current and q
  assert.notEqual(currentAfter,current);
  assert.equal(after.items[0].label,'奉獻');
  assert.equal(remapPosition(before,after,null),null);
+ assert.equal(remapPosition(after,before,0,{fallback:false}),null);
 });

@@ -3,6 +3,7 @@ const hex = size => Array.from(crypto.getRandomValues(new Uint8Array(size)),v=>v
 export const newSyncRoom = () => hex(16);
 export const newHostKey = () => hex(32);
 export const validSyncRoom = room => /^[a-f0-9]{32}$/.test(room);
+export const accessLabels={view:'瀏覽',cue:'預約',control:'控制'};
 export function normalizeEndpoint(value) {
   const url=new URL(value);
   if(!['wss:','ws:','https:','http:'].includes(url.protocol))throw Error('同步網址須為 Worker 的 HTTPS 或 WSS 網址');
@@ -11,7 +12,7 @@ export function normalizeEndpoint(value) {
   url.pathname=url.pathname.replace(/\/$/,'');url.search='';url.hash='';
   return url.toString().replace(/\/$/,'');
 }
-export function createSyncClient({endpoint,room,role,hostKey,controlKey,onStatus=()=>{},onOpen=()=>{},onState=()=>{},onNavigate=()=>{},onPresence=()=>{},onAccess=()=>{},onDenied=()=>{}}) {
+export function createSyncClient({endpoint,room,role,hostKey,controlKey,clientKey,variant,onStatus=()=>{},onOpen=()=>{},onState=()=>{},onNavigate=()=>{},onPlayback=()=>{},onPresence=()=>{},onAccess=()=>{},onDenied=()=>{}}) {
   if(!validSyncRoom(room))throw Error('連線代碼必須是 32 位十六進位字元');
   if(role!=='leader' && role!=='controller')throw Error('Invalid role');
   const base=normalizeEndpoint(endpoint), params=new URLSearchParams({role});
@@ -19,8 +20,10 @@ export function createSyncClient({endpoint,room,role,hostKey,controlKey,onStatus
     if(!/^[a-f0-9]{64}$/.test(hostKey||''))throw Error('Invalid host key');
     params.set('key',hostKey);
     if(controlKey)params.set('controlKey',controlKey);
-  }else if(controlKey){
-    params.set('control',controlKey);
+  }else{
+    if(controlKey)params.set('control',controlKey);
+    if(clientKey)params.set('client',clientKey);
+    if(variant)params.set('variant',variant);
   }
   const target=base+'/ws/'+room+'?'+params.toString();
   let socket,active=true,tries=0,timer,heartbeat,connected=false,revision=0,lastPong=0;
@@ -43,9 +46,11 @@ export function createSyncClient({endpoint,room,role,hostKey,controlKey,onStatus
           revision=msg.revision;const applied=onState(msg.snapshot,msg.revision);
           if(role==='leader'&&applied!==false)send({type:'ack',revision});
         } else if(msg.type==='navigate' && role==='controller')onNavigate(msg.target);
-        else if(msg.type==='presence')onPresence(msg.controllerOnline,msg.leaderCount??0,{control:msg.controlCount??0,view:msg.viewCount??msg.leaderCount??0});
-        else if(msg.type==='access')onAccess(msg.canControl===true);
-        else if(msg.type==='denied'){active=false;connected=false;clearInterval(heartbeat);status(msg.error);onDenied(msg.error);socket.close();}
+        else if(msg.type==='playback' && role==='controller')onPlayback(msg);
+        else if(msg.type==='presence')onPresence(msg.controllerOnline,msg.leaderCount??0,{
+          control:msg.cueCount===undefined?0:msg.controlCount??0,cue:msg.cueCount??msg.controlCount??0,view:msg.viewCount??msg.leaderCount??0},msg.clients);
+        else if(msg.type==='access')onAccess(msg.level??(msg.canControl?'cue':'view'),msg.id);
+        else if(msg.type==='denied'){connected=false;clearInterval(heartbeat);onDenied(msg.error);active=false;socket.close();}
         else if(msg.type==='pong')lastPong=Date.now();
         else if(msg.type==='error')status('同步錯誤：'+msg.error);
       }catch(err){status('接收資料錯誤：'+err.message);}

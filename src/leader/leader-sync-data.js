@@ -27,7 +27,7 @@ export function leaderPosition(show, data, at) {
     const after = show.items.slice(at + 1).find(candidate => sameSection(candidate) && candidate.type !== 'blank');
     if (before?.song && after?.song) song = after.song;
   }
-  if (!song){const first=show.items.findIndex(item=>item.song);return {singing:false, slideIndex:at,area:first<0||at<first?'before':'after'};}
+  if (!song){const first=show.items.findIndex(item=>item.song),last=show.items.findLastIndex(item=>item.song);return {singing:false, slideIndex:at,area:first<0||at<first?'before':'after',interstitial:at>first&&at<last};}
   const songIndex = show.songs.findIndex(source => source.id === song.id);
   const entries = data.route.map((part, index) => ({part, index})).filter(({part}) => part.song === songIndex);
   const nearest = entries.find(({part}) => part.slideIndices[0] >= at) || entries.at(-1);
@@ -99,13 +99,16 @@ export function leaderSnapshot(show, raw) {
   }
   const first=show.items.findIndex(item=>item.song),last=show.items.findLastIndex(item=>item.song);
   const readOnly={before:[],after:[]};
+  const extraPages={before:[],worship:[],after:[]};
+  const routed=new Set(route.flatMap(part=>part.slideIndices));
   show.items.forEach((item,slideIndex)=>{
-    if(item.song||slideIndex>=first&&slideIndex<=last||item.section.title==='會前')return;
-    const area=first<0||slideIndex<first?'before':'after';
+    if(routed.has(slideIndex))return;
+    const area=first<0||slideIndex<first?'before':slideIndex>last?'after':'worship';
     const lines=item.layout==='roster'?[item.heading,...item.columns.flatMap(column=>column.rows.map(row=>[row.group,row.role,row.name].filter(Boolean).join('　')))]:
       item.blocks?.flatMap(block=>block.text.split('\n'))||[item.track?.label||item.label||''];
-    readOnly[area].push({slideIndex,section:item.section.id,sectionTitle:item.section.title,
-      name:item.label||'',lines,seconds:item.seconds||0,page:item.pagination||'',kind:item.type});
+    const page={slideIndex,section:item.section.id,sectionTitle:item.section.title,
+      name:item.label||'',lines,seconds:item.seconds||0,page:item.pagination||'',kind:item.type};
+    (area==='worship'||item.section.title==='會前'?extraPages:readOnly)[area].push(page);
   });
-  return {schema:1, showName:show.name, labels:show.labels, songs:result, plans, route,readOnly};
+  return {schema:1, showName:show.name, labels:show.labels, songs:result, plans, route,readOnly,extraPages};
 }

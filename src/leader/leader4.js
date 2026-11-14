@@ -6,14 +6,17 @@ import {uiLabels} from '../config/ui-labels.js';
 const $=id=>document.getElementById(id);
 let songs=[],route=[],rows=[],viewedSong=0;
 let readOnly={before:[],after:[]},viewedArea='worship',catalogKey='',tabSelection=null,labels=uiLabels();
-let active={singing:false},queued=null;
+let active={singing:false},queued=null,previous=null,playback={},extraPages={},lastTap=null,cueTimer;
 let structureKey='',activeKey='',animation=0,frameLock=null;
 const lastPositions=new Map();
 const node=(tag,className,text)=>{const element=document.createElement(tag);element.className=className||'';if(text!==undefined)element.textContent=text;return element;};
 const announce=message=>{$('announcement').textContent=message;};
 const groupAt=index=>$('flow-sequence').querySelector('.flow-group[data-route-index="'+index+'"]');
-const slideAt=index=>$('flow-sequence').querySelector('.flow-group[data-slide-index="'+index+'"]');
-const currentElement=()=>viewedArea==='worship'?(active.singing?groupAt(active.routeIndex):null):slideAt(active.slideIndex);
+const slideAt=index=>$('flow-sequence').querySelector('[data-slide-index="'+index+'"]');
+const currentElement=()=>{
+ const page=slideAt(active.slideIndex);
+ return page?.closest('.flow-group')||(viewedArea==='worship'&&active.singing?groupAt(active.routeIndex):null);
+};
 const tabIndex=()=>viewedArea==='before'?-1:viewedArea==='after'?songs.length:viewedSong;
 function navigate(row,routePage=0){
  if(!sync.canControl){moveTo(groupAt(row.routeIndex),{smooth:true});return;}
@@ -21,20 +24,36 @@ function navigate(row,routePage=0){
  const target=navigationTarget(row,routePage);if(!target)return;
  if(sync.navigateTo(target)){queued={...target,page:routePage};viewedSong=row.song;renderTabs();updateFlow();renderShortcuts();announce('已預選下一項：'+songs[row.song].title+' · '+row.name);}
 }
+function bindPage(button,index,onClick,{mark=true}={}){
+ if(mark&&Number.isInteger(index))button.dataset.slideIndex=String(index);
+ button.onclick=event=>{
+  if(sync.level!=='control'||!Number.isInteger(index)){onClick?.();return;}
+  const touch=event.pointerType==='touch',delay=touch?350:500;
+  const doubleTap=lastTap?.index===index&&(event.timeStamp-lastTap.time<=delay||!touch&&event.detail===2);
+  clearTimeout(cueTimer);
+  if(doubleTap||event.detail===0){lastTap=null;sync.playback('jump',index);return;}
+  lastTap={index,time:event.timeStamp};
+  if(onClick)cueTimer=setTimeout(()=>{if(sync.level==='control')onClick();},delay);
+ };
+ button.ondblclick=event=>event.preventDefault();
+}
+function extraIn(area){
+ return [...(readOnly[area]||[]),...(sync.level==='control'?extraPages[area]||[]:[])].sort((a,b)=>a.slideIndex-b.slideIndex);
+}
 function setViewedSong(index){
  viewedArea=index<0?'before':index>=songs.length?'after':'worship';
  if(viewedArea==='worship')viewedSong=index;
  render({focusSong:true,smooth:true});
 }
 function renderTabs(){
- $('song-number').textContent=viewedArea==='worship'?(viewedSong+1)+'/'+songs.length:'僅看';
+ $('song-number').textContent=viewedArea==='worship'?(viewedSong+1)+'/'+songs.length:'';
  $('song-title').textContent=viewedArea==='worship'?(songs[viewedSong]?.title||'尚無歌曲'):labels.worship+(viewedArea==='before'?'前':'後');
  const selected=tabIndex();
  $('previous-song').disabled=selected===-1;$('next-song').disabled=selected===songs.length;
  const tabs=[{title:labels.worship+'前',index:-1},...songs.map((song,index)=>({title:String(index+1)+' '+song.title,index})),{title:labels.worship+'後',index:songs.length}];
  $('song-tabs').replaceChildren(...tabs.map(({title,index:i})=>{
   const button=node('button','song-tab',title);button.type='button';
-  const live=active.singing?i===active.songIndex:active.area==='before'?i===-1:i===songs.length;
+  const live=active.singing?i===active.songIndex:!active.interstitial&&(active.area==='before'?i===-1:i===songs.length);
   button.classList.toggle('viewing',i===selected);button.classList.toggle('playing',live);
   button.setAttribute('aria-pressed',String(i===selected));button.setAttribute('aria-label','瀏覽'+title+(i<0||i>=songs.length?'（僅看）':'的完整編排'));
   button.onclick=()=>setViewedSong(i);return button;
@@ -43,12 +62,12 @@ function renderTabs(){
 }
 function renderShortcuts(){
  if(viewedArea!=='worship'){
-  const groups=new Map();for(const item of readOnly[viewedArea]||[])if(!groups.has(item.section))groups.set(item.section,item);
+  const pages=extraIn(viewedArea),groups=new Map();for(const item of pages)if(!groups.has(item.section))groups.set(item.section,item);
   const sections=[...groups.values()],shortcuts=$('section-shortcuts');
   shortcuts.style.setProperty('--shortcut-count',Math.max(1,sections.length));
   shortcuts.replaceChildren(...sections.map(item=>{
    const button=node('button','flow-shortcut instrumental readonly-shortcut',item.sectionTitle);button.type='button';
-   button.classList.toggle('playing',(readOnly[viewedArea]||[]).some(page=>page.section===item.section&&page.slideIndex===active.slideIndex));
+   button.classList.toggle('playing',pages.some(page=>page.section===item.section&&page.slideIndex===active.slideIndex));
    button.onclick=()=>moveTo(slideAt(item.slideIndex),{smooth:true});return button;
   }));return;
  }
@@ -66,50 +85,58 @@ function renderShortcuts(){
   return button;
  }));
 }
+function extraPage(item){
+ const group=node('article','flow-group instrumental readonly-group');group.dataset.slideIndex=String(item.slideIndex);
+ const page=node('button','flow-extra-page');page.type='button';
+ page.disabled=sync.level!=='control';bindPage(page,item.slideIndex,undefined,{mark:false});
+ page.append(node('strong','readonly-title',item.name||'空白頁'));
+ if(item.lines.some(line=>line))page.append(node('span','readonly-content',item.lines.join('\n')));
+ if(item.seconds)page.append(node('small','readonly-timer',item.seconds+' 秒 · 自動換頁'));
+ group.append(page);return group;
+}
 function buildFlow(){
  if(viewedArea!=='worship'){
   const list=document.createDocumentFragment();let section=null;
-  for(const item of readOnly[viewedArea]||[]){
+  for(const item of extraIn(viewedArea)){
    if(section!==item.section){list.append(node('div','flow-song-divider',item.sectionTitle));section=item.section;}
-   const group=node('article','flow-group instrumental readonly-group');group.dataset.slideIndex=String(item.slideIndex);
-   group.append(node('strong','readonly-title',item.name||''));
-   if(item.lines.some(line=>line)){
-    const content=node('div','readonly-content');for(const line of item.lines)content.append(node('div','',line||'\u00a0'));group.append(content);
-   }
-   if(item.seconds)group.append(node('small','readonly-timer',item.seconds+' 秒 · 自動換頁'));
-   list.append(group);
+   list.append(extraPage(item));
   }
   if(!list.childNodes.length)list.append(node('p','flow-end','尚無項目'));
   $('flow-sequence').replaceChildren(list);return;
  }
- const list=document.createDocumentFragment();let previousSong=-1;
+ const list=document.createDocumentFragment(),extra=extraIn('worship');let previousSong=-1,extraIndex=0;
  for(const row of rows){
   if(row.end){list.append(node('div','flow-end',labels.worship+'結束'));continue;}
+  while(extra[extraIndex]?.slideIndex<route[row.routeIndex].slideIndices?.[0])list.append(extraPage(extra[extraIndex++]));
   if(previousSong!==row.song){const divider=node('div','flow-song-divider',String(row.song+1)+' · '+songs[row.song].title);divider.dataset.songIndex=String(row.song);list.append(divider);previousSong=row.song;}
   const group=node('article','flow-group '+row.kind);group.dataset.routeIndex=String(row.routeIndex);group.dataset.songIndex=String(row.song);
   if(row.loop)group.dataset.loop='true';
   if(row.utility){
-   const button=node('button','flow-interlude',row.name);button.type='button';button.setAttribute('aria-label','預選 '+songs[row.song].title+'的'+row.name);button.onclick=()=>navigate(row);group.append(button);
+   const button=node('button','flow-interlude',row.name);button.type='button';button.setAttribute('aria-label',songs[row.song].title+'的'+row.name);
+   bindPage(button,route[row.routeIndex].slideIndices?.[0],()=>navigate(row));group.append(button);
   }else{
    const title=node('button','flow-title');title.type='button';title.append(node('strong','',row.name.replace(/\s+/g,'')));
    if(row.repeated||row.loop)title.append(node('small','flow-occurrence',repeatRatio(row)));
-   title.setAttribute('aria-label','預選'+row.name+'第 1 頁');title.onclick=()=>navigate(row);
+   title.setAttribute('aria-label',row.name+'第 1 頁');bindPage(title,route[row.routeIndex].slideIndices?.[0],()=>navigate(row),{mark:false});
    const pages=node('div','flow-page-list');
    for(const page of row.pages){
     const button=node('button','flow-page');button.type='button';button.dataset.routePage=String(page.routePage);
-    button.setAttribute('aria-label','預選'+row.name+'第 '+(page.routePage+1)+' 頁：'+page.lines.join(' '));
+    button.setAttribute('aria-label',row.name+'第 '+(page.routePage+1)+' 頁：'+page.lines.join(' '));
     for(const line of page.lines)button.append(node('span','flow-lyric-line',line||'\u00a0'));
-    button.onclick=()=>navigate(row,page.routePage);pages.append(button);
+    bindPage(button,route[row.routeIndex].slideIndices?.[page.routePage],()=>navigate(row,page.routePage));pages.append(button);
    }
    group.append(title,pages);
   }
   list.append(group);
  }
+ for(const item of extra.slice(extraIndex))list.append(extraPage(item));
  $('flow-sequence').replaceChildren(list);
 }
 function updateFlow(){
- $('flow-scroll').setAttribute('aria-label',viewedArea==='worship'?'完整演唱順序，向上可查看已播放內容':labels.worship+(viewedArea==='before'?'前':'後')+'項目，僅供查看');
- $('flow-scroll').classList.toggle('readonly',viewedArea!=='worship'||!active.singing||!sync.canControl);
+ $('flow-scroll').setAttribute('aria-label',viewedArea==='worship'?'完整演唱順序':labels.worship+(viewedArea==='before'?'前':'後')+'項目');
+ $('flow-scroll').classList.toggle('readonly',sync.level!=='control'&&(viewedArea!=='worship'||!active.singing||!sync.canControl));
+ $('flow-scroll').classList.toggle('full-control',sync.level==='control');
+ updatePlayback();
  if(viewedArea!=='worship'){
   for(const group of $('flow-sequence').querySelectorAll('.flow-group')){
    const index=Number(group.dataset.slideIndex),live=index===active.slideIndex;
@@ -118,7 +145,7 @@ function updateFlow(){
   }
   syncFrames();return;
  }
- for(const group of $('flow-sequence').querySelectorAll('.flow-group')){
+ for(const group of $('flow-sequence').querySelectorAll('.flow-group[data-route-index]')){
   const index=Number(group.dataset.routeIndex),live=active.singing&&index===active.routeIndex;
   group.classList.toggle('active',live);group.classList.toggle('past',active.singing&&index<active.routeIndex);
   group.classList.toggle('queued',index===queued?.routeIndex);
@@ -142,10 +169,22 @@ function placeFrame(frame,box){
  frame.hidden=false;for(const property of ['top','left','width','height'])frame.style[property]=box[property]+'px';
 }
 function syncFrames(){
- const current=currentElement(),next=viewedArea==='worship'?(queued?.singing===false?null:groupAt(queued?.routeIndex)):slideAt(queued?.slideIndex);
+ const current=currentElement(),next=slideAt(queued?.slideIndex)||(viewedArea==='worship'&&queued?.singing!==false?groupAt(queued?.routeIndex):null);
  placeFrame($('flow-current-frame'),current?(frameLock||frameBox(current)):null);
  const nextPage=next?.querySelector('.flow-page[data-route-page="'+(queued?.page||0)+'"]');
  placeFrame($('flow-next-frame'),next?frameBox(nextPage||next):null);
+ const previousPage=slideAt(previous?.slideIndex);
+ placeFrame($('flow-previous-frame'),previousPage?frameBox(previousPage):null);
+}
+function updatePlayback(){
+ const footer=$('flow-playback'),scroll=$('flow-scroll');
+ footer.hidden=sync.level!=='control';
+ $('flow-previous').disabled=!sync.online||!previous;
+ $('flow-next').disabled=!sync.online||!playback.canNext;
+ $('flow-next').setAttribute('aria-label',playback.startsVideo?'播放影片':'下一頁');
+ footer.style.setProperty('--flow-scrollbar',scroll.offsetWidth-scroll.clientWidth+'px');
+ const reference=slideAt(queued?.slideIndex)?.closest('.flow-page')||$('flow-sequence').querySelector('.flow-page');
+ footer.style.setProperty('--flow-footer-height',reference?reference.offsetHeight+'px':'var(--flow-page-height)');
 }
 function stopFollow(){cancelAnimationFrame(animation);animation=0;frameLock=null;syncFrames();}
 function moveTo(target,{smooth=false,lockFrame=false}={}){
@@ -165,7 +204,7 @@ function moveTo(target,{smooth=false,lockFrame=false}={}){
 }
 function render({focusSong=false,follow=false,smooth=false}={}){
  if(!catalogKey)return;
- const key=catalogKey+'|'+viewedArea;
+ const key=catalogKey+'|'+viewedArea+'|'+(sync.level==='control');
  if(key!==structureKey){structureKey=key;rows=expandedRoute(route,songs);buildFlow();}
  viewedSong=Math.min(viewedSong,songs.length-1);renderTabs();renderShortcuts();updateFlow();
  if(focusSong){
@@ -179,22 +218,25 @@ function render({focusSong=false,follow=false,smooth=false}={}){
 $('flow-scroll').addEventListener('scroll',syncFrames,{passive:true});
 for(const event of ['wheel','touchstart','pointerdown'])$('flow-scroll').addEventListener(event,stopFollow,{passive:true});
 window.addEventListener('resize',()=>render({focusSong:true}));
+$('flow-previous').onclick=()=>sync.playback('previous');$('flow-next').onclick=()=>sync.playback('next');
 $('previous-song').onclick=()=>setViewedSong(tabIndex()-1);$('next-song').onclick=()=>setViewedSong(tabIndex()+1);
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{announce('請使用瀏覽器的全螢幕功能。');}};
 document.addEventListener('fullscreenchange',()=>$('fullscreen').setAttribute('aria-label',document.fullscreenElement?'退出全螢幕':'進入全螢幕'));
-const sync=mountLeader({showOutsideWorship:true,onState:snapshot=>{
+const sync=mountLeader({showOutsideWorship:true,onAccessChange:()=>{lastTap=null;clearTimeout(cueTimer);if(catalogKey)render();},onState:snapshot=>{
  if(!Array.isArray(snapshot.songs)||!Array.isArray(snapshot.route))return;
  labels={...uiLabels(),...snapshot.labels};
- const next=snapshot.active||{singing:false},key=next.singing?'song:'+next.routeIndex:'slide:'+next.slideIndex;
+ const next=snapshot.active||{singing:false},key=next.singing&&!next.interstitial?'song:'+next.routeIndex:'slide:'+next.slideIndex;
  const changed=key!==activeKey,previousSong=active.songIndex;
  const incomingKey=snapshot.contentVersion||JSON.stringify([snapshot.songs,snapshot.route,snapshot.readOnly]);
  const changedShow=catalogKey!==incomingKey;
- if(changedShow)lastPositions.clear();
+ if(changedShow){lastPositions.clear();lastTap=null;clearTimeout(cueTimer);}
  for(const [songIndex,position] of Object.entries(snapshot.history||{})){
   if(Number.isInteger(position?.routeIndex)&&snapshot.route[position.routeIndex]?.song===Number(songIndex))lastPositions.set(Number(songIndex),position);
  }
- songs=snapshot.songs;route=snapshot.route;readOnly=snapshot.readOnly||{before:[],after:[]};active=next;queued=snapshot.next||snapshot.cue;catalogKey=incomingKey;
+ if(!!snapshot.extraPages!==!!extraPages.before)structureKey='';
+ songs=snapshot.songs;route=snapshot.route;readOnly=snapshot.readOnly||{};extraPages=snapshot.extraPages||{};
+ active=next;queued=snapshot.next||snapshot.cue;previous=snapshot.previous;playback=snapshot.playback||{};catalogKey=incomingKey;
  if(next.singing){lastPositions.set(next.songIndex,{routeIndex:next.routeIndex,page:next.page});if(previousSong!==next.songIndex||changedShow||changed&&viewedArea!=='worship'){viewedSong=next.songIndex;viewedArea='worship';}}
- else if(changed||changedShow)viewedArea=next.area||'before';
+ else if(changed||changedShow)viewedArea=next.interstitial&&sync.level==='control'?'worship':next.area||'before';
  activeKey=key;render({follow:changed,smooth:!!structureKey});
 }});

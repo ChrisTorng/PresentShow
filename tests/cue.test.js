@@ -18,6 +18,26 @@ test('cue targets stay in current song and continuation pages have no shortcut',
   const nav=new CueNavigation();assert.equal(items[first+1].song.sectionStart,false);assert.equal(items[first+1].song.sectionLabel,'主歌1 · 2/2');
   nav.click(items.length-1);assert.equal(nav.target(items,first,'v'),second);assert.equal(nav.shortcut(items,first,'b',0),null);
 });
+test('previous rewinds actual playback to the beginning through jumps and repeated visits',()=>{
+  const nav=new CueNavigation();assert.equal(nav.previous,null);
+  nav.advance(items,0,second);assert.equal(nav.previous,0);
+  nav.advance(items,second,first);
+  nav.advance(items,first,second);
+  nav.click(first);nav.reset();assert.equal(nav.previous,first);
+  nav.advance(items,second,second);assert.equal(nav.previous,first);
+  nav.advance(items,second,nav.previous,true);assert.equal(nav.previous,second);
+  nav.advance(items,first,nav.previous,true);assert.equal(nav.previous,0);
+  nav.advance(items,second,nav.previous,true);assert.equal(nav.previous,null);
+  nav.advance(items,0,first);assert.equal(nav.previous,0);
+});
+test('recompiling playback history remaps valid pages and skips deleted or adjacent duplicate pages',()=>{
+  const nav=new CueNavigation();
+  nav.advance(items,0,1);nav.advance(items,1,2);nav.advance(items,2,3);nav.advance(items,3,4);
+  nav.remapHistory(index=>[1,null,1,2][index],2);
+  assert.equal(nav.previous,1);
+  nav.advance(items,2,1,true);assert.equal(nav.previous,null);
+  nav.advance(items,1,2);nav.clearHistory();assert.equal(nav.previous,null);
+});
 test('song titles retain credits, lyrics share width measurements, reading pages count paragraphs',()=>{
   const title=items.find(p=>p.layout==='song-title');assert.equal(title.blocks[0].text,'標題');assert.equal(title.credit,'Artist');
   assert.deepEqual(items[first].lyricLines,items[second].lyricLines);

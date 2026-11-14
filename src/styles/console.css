@@ -270,3 +270,9 @@ body.console-open{height:100dvh;overflow:hidden}
 .sync-share-actions{display:flex;gap:12px;align-items:center;margin-top:10px}
 .sync-share-actions #sync-leader-open{flex:1}
 .sync-popover .sync-share-actions #sync-qr{margin:0;flex:none}
+#sync-clients{display:grid;gap:6px}
+#sync-clients label{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;font-size:13px}
+#sync-clients select{padding:4px 8px;border:1px solid #b8cdbf;border-radius:6px;background:#fff;color:#234e43}
+.slide-card.previous{border-color:var(--previous-color)}
+.slide-card.previous:not(.queued):after{border-color:var(--previous-color)}
+.slide-card.previous.queued:after{box-shadow:inset 0 0 0 3px var(--previous-color)}

@@ -1,15 +1,17 @@
-import {createSyncClient,validSyncRoom,normalizeEndpoint} from './leader-sync.js';
+import {accessLabels,createSyncClient,newHostKey,validSyncRoom,normalizeEndpoint} from './leader-sync.js';
 import {ScreenAwake} from './screen-awake.js';
 import {applyUILabels,uiLabels} from '../config/ui-labels.js';
-export function mountLeader({onState,onError=()=>{},showOutsideWorship=false}){
+export function mountLeader({onState,onError=()=>{},onAccessChange=()=>{},showOutsideWorship=false}){
  const params=new URLSearchParams(location.search),get=id=>document.getElementById(id);
+ const variant=location.pathname.match(/leader([1-4])\.html$/)?.[1]||'';
+ const clientKey=newHostKey();
  const cover=document.createElement('section');cover.id='leader-cover';cover.className='leader-cover';
  cover.innerHTML='<div class="leader-cover-card"><h2 id="leader-cover-title">連接 PresentShow 主控</h2><p id="leader-cover-message">輸入連線代碼，或掃描主控顯示的 QR Code。</p><button id="leader-cover-connect">設定連線</button></div>';document.body.append(cover);
  const chip=document.createElement('div');chip.className='leader-sync-chip';
- chip.innerHTML='<span id="leader-access-mode">僅瀏覽</span><span id="leader-sync-status" hidden></span><button id="leader-sync-settings" type="button" aria-label="修改連線設定">⚙</button>';document.body.append(chip);
+ chip.innerHTML='<span id="leader-access-mode">瀏覽</span><span id="leader-client-id" hidden></span><span id="leader-sync-status" hidden></span><button id="leader-sync-settings" type="button" aria-label="修改連線設定">⚙</button>';document.body.append(chip);
  const awakeStatus=document.createElement('span');awakeStatus.className='leader-awake-status';chip.prepend(awakeStatus);
  const awake=new ScreenAwake({onStatus:(text,locked)=>{awakeStatus.textContent=locked?'':text;awakeStatus.hidden=locked;}});
- const positionChip=()=>{const box=get('fullscreen')?.getBoundingClientRect();if(box){chip.style.top=(box.bottom+2)+'px';chip.style.right=Math.max(5,innerWidth-box.right)+'px';}};
+ const positionChip=()=>{const box=get('fullscreen')?.getBoundingClientRect();if(box?.width){chip.style.top=(box.bottom+2)+'px';chip.style.right=Math.max(5,innerWidth-box.right)+'px';}};
  window.addEventListener('resize',positionChip);document.addEventListener('fullscreenchange',positionChip);requestAnimationFrame(positionChip);
  window.addEventListener('pagehide',event=>{if(event.persisted)awake.lock?.release();else awake.destroy();});
  window.addEventListener('pageshow',()=>awake.request());
@@ -20,7 +22,6 @@ export function mountLeader({onState,onError=()=>{},showOutsideWorship=false}){
  let readingArea='before',readingPosition=null,latestSnapshot=null,labels=uiLabels();
  function applyLabels(snapshot){
   labels={...uiLabels(),...snapshot.labels};applyUILabels(document,labels);
-  const variant=location.pathname.match(/leader([1-4])\.html$/)?.[1]||'';
   document.title=`PresentShow · ${labels.leader} ${variant}`;
   document.querySelector('meta[name="description"]')?.setAttribute('content',document.title);
  }
@@ -44,7 +45,7 @@ export function mountLeader({onState,onError=()=>{},showOutsideWorship=false}){
  }
  roomInput.value=params.get('room')||localStorage.getItem('present-show-leader-room')||'';
  urlInput.value=params.get('ws')||localStorage.getItem('present-show-relay-url')||'';
- let client=null,hasData=false,singing=false,online=false,canControl=false,denied='';
+ let client=null,hasData=false,singing=false,online=false,level='view',clientId='',denied='';
  const status=message=>{const abnormal=/中斷|錯誤|無法|失敗|離線|無效/.test(message);get('leader-sync-status').textContent=abnormal?message:'';get('leader-sync-status').hidden=!abnormal;};
  const showCover=(title,message,button=true)=>{get('leader-cover-title').textContent=title;get('leader-cover-message').textContent=message;get('leader-cover-connect').hidden=!button;cover.hidden=false;};
  const refresh=()=>{
@@ -52,7 +53,15 @@ export function mountLeader({onState,onError=()=>{},showOutsideWorship=false}){
   if(denied)showCover('無法使用此控制網址',denied);
   else if(!hasData&&client)showCover('載入中…','正在等待主控傳送歌曲、歌詞及播放順序。');
   else if(!hasData)showCover('連接 PresentShow 主控','輸入連線代碼，或掃描主控顯示的 QR Code。');
-  else cover.hidden=true;chip.classList.toggle('offline',hasData&&!online);get('leader-access-mode').textContent=canControl?'可控制':'僅瀏覽';document.body.classList.toggle('leader-view-only',!canControl);};
+  else cover.hidden=true;
+  chip.classList.toggle('offline',hasData&&!online);
+  get('leader-access-mode').textContent=accessLabels[level];
+  get('leader-client-id').textContent=clientId.slice(0,8);get('leader-client-id').hidden=!clientId;
+  document.body.classList.toggle('leader-view-only',level==='view');
+ };
+ function setAccess(next,id=''){
+  level=next;clientId=id;refresh();onAccessChange();
+ }
  const open=()=>{get('leader-settings-error').textContent='';panel.showModal();};
  get('leader-sync-settings').onclick=open;get('leader-cover-connect').onclick=open;
  get('leader-close').onclick=()=>panel.close();
@@ -60,21 +69,21 @@ export function mountLeader({onState,onError=()=>{},showOutsideWorship=false}){
   try{
    const room=roomInput.value.trim().toLowerCase(),endpoint=normalizeEndpoint(urlInput.value.trim());
    if(!validSyncRoom(room))throw Error('連線代碼格式錯誤，請直接複製主控提供的代碼。');
-   client?.close();hasData=false;singing=false;online=false;canControl=false;denied='';
+   client?.close();hasData=false;singing=false;online=false;denied='';setAccess('view');
    localStorage.setItem('present-show-leader-room',room);localStorage.setItem('present-show-relay-url',endpoint);
    const controlKey=params.get('mode')==='view'?undefined:params.get('control')||undefined;
-   client=createSyncClient({room,endpoint,role:'leader',controlKey,
-    onAccess:allowed=>{canControl=allowed;refresh();},
-    onDenied:message=>{denied=message;canControl=false;refresh();},
-    onStatus:s=>{status(s);if(s.includes('中斷')||s.includes('錯誤'))online=false;refresh();},
+   client=createSyncClient({room,endpoint,role:'leader',controlKey,variant,clientKey,
+    onAccess:setAccess,
+    onDenied:message=>{denied=message;setAccess('view');},
+    onStatus:s=>{status(s);if(s.includes('中斷')||s==='WebSocket 網路錯誤'){online=false;setAccess('view');}},
     onOpen:()=>{status('已連線，等待主控');client.send({type:'request'});},
-    onPresence:isOnline=>{online=isOnline;status(isOnline?'主控在線 · 已同步':'主控離線');refresh();},
-    onState:(snapshot,rev)=>{if(!snapshot||snapshot.schema!==1)return false;singing=!!snapshot.active?.singing;latestSnapshot=snapshot;document.body.dataset.syncReceivedAt=String(Date.now());try{if(originalApp)originalApp.hidden=false;applyLabels(snapshot);onState(snapshot);renderReading(snapshot);hasData=true;}catch(e){refresh();onError(e);status('資料套用失敗：'+e.message);return false;}refresh();return true;}
+    onPresence:isOnline=>{const changed=online!==isOnline;online=isOnline;status(isOnline?'主控在線 · 已同步':'主控離線');refresh();if(changed)onAccessChange();},
+    onState:snapshot=>{if(!snapshot||snapshot.schema!==1)return false;singing=!!snapshot.active?.singing;latestSnapshot=snapshot;document.body.dataset.syncReceivedAt=String(Date.now());try{if(originalApp)originalApp.hidden=false;applyLabels(snapshot);onState(snapshot);renderReading(snapshot);hasData=true;}catch(e){refresh();onError(e);status('資料套用失敗：'+e.message);return false;}refresh();positionChip();return true;}
    });panel.close();refresh();
   }catch(e){get('leader-settings-error').textContent=e.message;}
  };
  function navigate(sequence){
-  if(!canControl)return;
+  if(level==='view')return;
   if(!singing){status('目前為唯讀階段');return;}
   if(!hasData||!client?.connected){status('未連線，無法控制主控');return;}
   if(!online){status('主控離線，無法切換');return;}
@@ -86,7 +95,7 @@ export function mountLeader({onState,onError=()=>{},showOutsideWorship=false}){
     routeIndex:sequence.route.findIndex(e=>e.id===item.id)}});
  }
  function navigateTo(target){
-  if(!canControl)return false;
+  if(level==='view')return false;
   if(!singing){status('目前為唯讀階段');return false;}
   if(!hasData||!client?.connected){status('未連線，無法控制主控');return false;}
   if(!online){status('主控離線，無法切換');return false;}
@@ -97,7 +106,12 @@ export function mountLeader({onState,onError=()=>{},showOutsideWorship=false}){
    ||!Number.isInteger(target.page)||target.page<0){status('無效的換頁要求');return false;}
   return client.send({type:'navigate',target});
  }
+ function playback(action,slideIndex){
+  if(level!=='control')return false;
+  if(!hasData||!client?.connected||!online){status('主控離線，無法切換');return false;}
+  return client.send({type:'playback',action,slideIndex,contentVersion:latestSnapshot.contentVersion});
+ }
  get('leader-loading')?.remove();
  refresh();if(validSyncRoom(roomInput.value.trim().toLowerCase())&&urlInput.value.trim())get('leader-connect').click();else open();
- return {navigate,navigateTo,get canControl(){return canControl;}};
+ return {navigate,navigateTo,playback,get canControl(){return level!=='view';},get level(){return level;},get online(){return online;}};
 }

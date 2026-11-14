@@ -21,10 +21,11 @@ async function ready(){
  throw Error('Worker start timeout: '+logs);
 }
 const room=randomBytes(16).toString('hex'),key=randomBytes(32).toString('hex'),controlKey=randomBytes(32).toString('hex'),base=(remote?remote.replace(/^http/,'ws'):'ws://127.0.0.1:8799')+'/ws/'+room;
-async function open(role,origin='https://present-show.vercel.app',control){
+async function open(role,origin='https://present-show.vercel.app',control,client){
  const params=new URLSearchParams({role});
  if(role==='controller'){params.set('key',key);params.set('controlKey',controlKey);}
  if(control)params.set('control',control);
+ if(client){params.set('client',client);params.set('variant','4');}
  const ws=new WebSocket(base+'?'+params,{headers:{Origin:origin}});
  sockets.push(ws);ws.messages=[];
  ws.received=new Map();
@@ -42,35 +43,52 @@ async function message(ws,type,predicate=()=>true){
 }
 try{
  await ready();
- const host=await open('controller'),a=await open('leader',undefined,controlKey),b=await open('leader');
+ const client=randomBytes(32).toString('hex');
+ const host=await open('controller'),a=await open('leader',undefined,controlKey),b=await open('leader',undefined,undefined,client);
  const secondControl=await open('leader',undefined,controlKey);
  assert.equal((await message(a,'access')).canControl,true);assert.equal((await message(secondControl,'access')).canControl,true);assert.equal((await message(b,'access')).canControl,false);
  const denied=await open('leader',undefined,randomBytes(32).toString('hex'));await message(denied,'denied');
  const mobile=await open('leader','http://192.168.1.103:4173');
  await message(mobile,'presence',m=>m.controllerOnline===true);
  await message(a,'presence',m=>m.controllerOnline===true);
- const snapshot={schema:1,showName:'測試',songs:[{title:'歌',sections:[{sectionId:1,name:'Verse',kind:'verse',pages:['歌詞']}]}],plans:['Verse'],active:{singing:true,slideIndex:2,songIndex:0,sectionIndex:0,page:0,routeIndex:0}};
+ const snapshot={schema:1,showName:'測試',slideCount:10,contentVersion:'test-show',extraPages:{before:[],worship:[],after:[]},songs:[{title:'歌',sections:[{sectionId:1,name:'Verse',kind:'verse',pages:['歌詞']}]}],plans:['Verse'],active:{singing:true,slideIndex:2,songIndex:0,sectionIndex:0,page:0,routeIndex:0}};
  host.send(JSON.stringify({type:'publish',snapshot}));
  assert.equal((await message(a,'state',m=>m.snapshot?.showName==='測試')).revision,1);
  assert.equal((await message(b,'state',m=>m.revision===1)).snapshot.active.slideIndex,2);
  await message(mobile,'state',m=>m.revision===1);
  for(const ws of [a,b,mobile,secondControl])ws.send(JSON.stringify({type:'ack',revision:1}));
- await message(host,'presence',m=>m.leaderCount===4&&m.controlCount===2&&m.viewCount===2);
+ await message(host,'presence',m=>m.leaderCount===4&&m.cueCount===2&&m.viewCount===2&&m.clients.every(c=>c.synced));
  host.send(JSON.stringify({type:'ping'}));await message(host,'pong');
  const target={songIndex:0,sectionIndex:0,page:0,routeIndex:0};
  a.send(JSON.stringify({type:'navigate',target}));
  assert.deepEqual((await message(host,'navigate')).target,target);
  host.messages=[];b.send(JSON.stringify({type:'navigate',target}));await message(b,'error',m=>m.error.includes('瀏覽'));assert.ok(!host.messages.some(m=>m.type==='navigate'));
  secondControl.send(JSON.stringify({type:'navigate',target}));await message(host,'navigate');
+ const {id}=await message(b,'access');
+ const jump={type:'playback',action:'jump',slideIndex:0,contentVersion:'test-show'};
+ a.send(JSON.stringify(jump));await message(a,'error',m=>m.error.includes('控制權限'));
+ host.send(JSON.stringify({type:'setAccess',id,level:'control'}));
+ await message(b,'access',m=>m.level==='control');
+ await message(b,'state',m=>m.snapshot?.extraPages);
+ await message(host,'presence',m=>m.controlCount===1&&m.clients.some(c=>c.id===id&&c.level==='control'));
+ b.send(JSON.stringify(jump));assert.equal((await message(host,'playback',m=>m.action==='jump')).slideIndex,0);
+ b.send(JSON.stringify({type:'playback',action:'previous'}));await message(host,'playback',m=>m.action==='previous');
+ b.send(JSON.stringify({...jump,contentVersion:'old-show'}));await message(b,'error',m=>m.error.includes('播放清單已變更'));
+ b.messages=[];
+ host.send(JSON.stringify({type:'setAccess',id,level:'view'}));await message(b,'access',m=>m.level==='view');
+ b.send(JSON.stringify(jump));await message(b,'error',m=>m.error.includes('控制權限'));
  b.send(JSON.stringify({type:'publish',snapshot:{...snapshot,showName:'偽造'}}));
  await wait(100);
  host.messages=[];
  b.close();await new Promise(resolve=>b.once('close',resolve));
- await message(host,'presence',m=>m.leaderCount===3&&m.controlCount===2&&m.viewCount===1);
- const newLeader=await open('leader'),stored=await message(newLeader,'state',m=>m.revision===1);
+ await message(host,'presence',m=>m.leaderCount===3&&m.cueCount===2&&m.viewCount===1);
+ const newLeader=await open('leader',undefined,controlKey,client),stored=await message(newLeader,'state',m=>m.revision===1);
+ assert.equal((await message(newLeader,'access')).id,id);
+ assert.equal((await message(newLeader,'access')).level,'view');
+ assert.equal(stored.snapshot.extraPages,undefined);
  assert.equal(stored.snapshot.showName,'測試');
  newLeader.send(JSON.stringify({type:'ack',revision:1}));
- await message(host,'presence',m=>m.leaderCount===4&&m.controlCount===2&&m.viewCount===2);
+ await message(host,'presence',m=>m.leaderCount===4&&m.cueCount===2&&m.viewCount===2);
  host.messages=[];
  host.send(JSON.stringify({type:'publish',snapshot:{...snapshot,active:{singing:false,slideIndex:0,area:'before'}}}));
  await message(a,'state',m=>m.revision===2);
@@ -87,7 +105,7 @@ try{
  const late=await open('leader'),latest=await message(late,'state',m=>m.revision===12);
  assert.equal(latest.snapshot.active.slideIndex,9);
  console.log('Live relay timing ('+(remote?'production':'local')+' ms): '+JSON.stringify({median:latencies.toSorted((a,b)=>a-b)[5].toFixed(1),maximum:Math.max(...latencies).toFixed(1)}));
- console.log('Durable Object WebSocket integration passed: multiple shared controllers, multiple viewers, view-only enforcement, invalid-link rejection, separate counts, reconnect and readonly stages');
+ console.log('Durable Object WebSocket integration passed: per-client access, playback commands, view and cue enforcement, invalid links, reconnect and readonly stages');
 } finally{
  for(const ws of sockets)try{ws.close();}catch{}
  if(child){child.kill('SIGTERM');await wait(250);if(child.exitCode===null)child.kill('SIGKILL');}

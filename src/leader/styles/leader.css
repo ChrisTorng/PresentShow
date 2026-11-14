@@ -19,8 +19,9 @@
 .leader-readonly-item.active{outline:3px solid #357357}.leader-readonly-item.queued{border:3px solid #d3a332;padding:10px}
 .leader-awake-status{font-size:9px;opacity:.7;padding-right:5px}.leader-awake-status.locked{color:#357357;opacity:1}
 
-/* Only access mode is visible during normal operation; diagnostics appear on failure. */
+/* Connection diagnostics appear below the access level and client ID. */
 .leader-sync-chip{bottom:auto;top:62px;right:12px;flex-wrap:wrap;gap:3px 5px;padding:2px 5px;font-size:10px;line-height:1.25;max-width:min(80vw,270px);background:#fff;color:#345c4b}
+.leader-sync-chip #leader-client-id{font-family:monospace}
 .leader-sync-chip #leader-sync-status,.leader-sync-chip .leader-awake-status{font-size:9px;color:#a13b2e}
 .leader-sync-chip #leader-sync-status:not([hidden]){flex-basis:100%;order:3}
 .leader-sync-chip .leader-awake-status:not([hidden]){flex-basis:100%;order:4}

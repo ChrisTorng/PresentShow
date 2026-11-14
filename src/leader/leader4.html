@@ -26,10 +26,16 @@
         <div class="flow-sidebar-caption">段落</div>
         <div id="section-shortcuts" class="flow-shortcuts"></div>
       </aside>
-      <div class="flow-panel"><div id="flow-current-frame" class="flow-frame current-frame" hidden></div><div id="flow-next-frame" class="flow-frame next-frame" hidden></div>
+      <div class="flow-right">
+       <div class="flow-panel"><div id="flow-current-frame" class="flow-frame current-frame" hidden></div><div id="flow-next-frame" class="flow-frame next-frame" hidden></div><div id="flow-previous-frame" class="flow-frame previous-frame" hidden></div>
         <div id="flow-scroll" class="flow-scroll" role="region" aria-label="完整演唱順序，向上可查看已播放內容">
           <div id="flow-sequence" class="flow-sequence"></div>
         </div>
+       </div>
+       <footer id="flow-playback" class="flow-playback" aria-label="投影換頁" hidden>
+         <button id="flow-previous" type="button" aria-label="上一頁">&lt;</button>
+         <button id="flow-next" type="button" aria-label="下一頁">&gt;</button>
+       </footer>
       </div>
     </section>
     <p id="announcement" class="sr-only" role="status" aria-live="polite"></p>

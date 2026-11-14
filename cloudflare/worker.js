@@ -2,7 +2,8 @@
 import {DurableObject} from 'cloudflare:workers';
 import {validOrigin} from './origin-policy.js';
 
-const ROOM = /^[a-f0-9]{32}$/;
+const KEY = /^[a-f0-9]{64}$/;
+const accessLevel = who => who.level ?? (who.canControl ? 'cue' : 'view');
 const json = (body, status=200) => new Response(JSON.stringify(body), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 
 export default {
@@ -15,7 +16,7 @@ export default {
     if(!validOrigin(request.headers.get('Origin'),env))return json({error:'Origin denied'},403);
     const role=url.searchParams.get('role');
     if(role!=='controller' && role!=='leader')return json({error:'Invalid role'},400);
-    if(role==='controller' && !/^[a-f0-9]{64}$/.test(url.searchParams.get('key')||''))return json({error:'Invalid host key'},401);
+    if(role==='controller' && !KEY.test(url.searchParams.get('key')||''))return json({error:'Invalid host key'},401);
     const id=env.SHOW_ROOMS.idFromName(match[1]);
     return env.SHOW_ROOMS.get(id).fetch(request);
   }
@@ -34,12 +35,27 @@ export class ShowRoom extends DurableObject {
     for(const ws of this.ctx.getWebSockets())if(filter(ws.deserializeAttachment()||{}))this.send(ws,data);
   }
   online() {return this.ctx.getWebSockets().some(ws=>ws.deserializeAttachment()?.role==='controller' && ws.readyState===1);}
-  presence() {
-    const leaders=this.ctx.getWebSockets().filter(ws=>{
-      const state=ws.deserializeAttachment();return ws.readyState===1&&state?.role==='leader'&&state.synced;
-    });
-    const controlCount=leaders.filter(ws=>ws.deserializeAttachment().canControl===true).length;
-    return {type:'presence',controllerOnline:this.online(),leaderCount:leaders.length,controlCount,viewCount:leaders.length-controlCount};
+  sendAccess(ws,who) {
+    const level=accessLevel(who);
+    this.send(ws,{type:'access',level,canControl:level!=='view',id:who.uid});
+  }
+  sendState(ws,snapshot,restricted,revision) {
+    const who=ws.deserializeAttachment()||{};
+    const full=who.role==='controller'||accessLevel(who)==='control';
+    this.send(ws,{type:'state',revision,snapshot:full?snapshot:restricted});
+  }
+  sendSaved(ws) {
+    if(this.saved){const {extraPages,...restricted}=this.saved;this.sendState(ws,this.saved,restricted,this.revision);}
+  }
+  publishPresence() {
+    const sockets=this.ctx.getWebSockets().filter(ws=>ws.readyState===1);
+    const clients=sockets.map(ws=>ws.deserializeAttachment()).filter(who=>who?.role==='leader')
+      .map(who=>({id:who.uid,variant:who.variant,level:accessLevel(who),synced:!!who.synced}));
+    const counts={view:0,cue:0,control:0};
+    for(const client of clients)counts[client.level]++;
+    const presence={type:'presence',controllerOnline:this.online(),leaderCount:clients.length,
+      controlCount:counts.control,cueCount:counts.cue,viewCount:counts.view};
+    for(const ws of sockets)this.send(ws,ws.deserializeAttachment()?.role==='controller'?{...presence,clients}:presence);
   }
   async fetch(request) {
     const url=new URL(request.url),role=url.searchParams.get('role'),key=url.searchParams.get('key')||'';
@@ -49,23 +65,32 @@ export class ShowRoom extends DurableObject {
       if(!owner)await this.ctx.storage.put('owner',key);
       const controlKey=url.searchParams.get('controlKey');
       if(controlKey){
-        if(!/^[a-f0-9]{64}$/.test(controlKey))return json({error:'Invalid control key'},400);
+        if(!KEY.test(controlKey))return json({error:'Invalid control key'},400);
         if(this.controlKey&&controlKey!==this.controlKey)return json({error:'Control key differs; reset the room to change it'},409);
         await this.ctx.storage.put('controlKey',controlKey);this.controlKey=controlKey;
       }
     }
     const token=url.searchParams.get('control');
     const canControl=role==='leader'&&!!token&&token===this.controlKey;
+    const variant=url.searchParams.get('variant');
+    const clientKey=role==='leader'&&KEY.test(url.searchParams.get('client')||'')?url.searchParams.get('client'):null;
+    const savedAccess=clientKey?await this.ctx.storage.get('access:'+clientKey):null;
     const pair=new WebSocketPair(),[client,server]=Object.values(pair);
     this.ctx.acceptWebSocket(server);
     if(role==='leader'&&token&&!canControl){
       server.serializeAttachment({role:'rejected'});this.send(server,{type:'denied',error:'控制網址無效，請向主控取得新的網址。'});server.close(4403,'Invalid control link');
       return new Response(null,{status:101,webSocket:client});
     }
-    server.serializeAttachment({role,canControl,uid:crypto.randomUUID()});
-    if(role==='leader')this.send(server,{type:'access',canControl});
-    if(this.saved)this.send(server,{type:'state',revision:this.revision,snapshot:this.saved});
-    this.broadcast(this.presence());
+    const who={role,uid:savedAccess?.id??crypto.randomUUID(),clientKey,variant:/^[1-4]$/.test(variant||'')?variant:null,
+      level:savedAccess?.level??(canControl?'cue':'view')};
+    if(who.level==='control'&&who.variant!=='4')who.level='cue';
+    if(clientKey)for(const socket of this.ctx.getWebSockets()){
+      if(socket.deserializeAttachment()?.clientKey===clientKey)socket.close(1000,'Reconnected');
+    }
+    server.serializeAttachment(who);
+    if(role==='leader')this.sendAccess(server,who);
+    this.sendSaved(server);
+    this.publishPresence();
     return new Response(null,{status:101,webSocket:client});
   }
   async webSocketMessage(ws,message) {
@@ -79,17 +104,31 @@ export class ShowRoom extends DurableObject {
          s.songs.length!==s.plans.length||s.songs.length>100||!s.active||
          !Number.isInteger(s.active.slideIndex)||JSON.stringify(s).length>180000)return this.send(ws,{type:'error',error:'Invalid snapshot'});
       const revision=++this.revision;this.saved=s;
-      this.broadcast({type:'state',revision,snapshot:s});
+      const {extraPages,...restricted}=s;
+      for(const socket of this.ctx.getWebSockets())this.sendState(socket,s,restricted,revision);
       // Live cues are transient: deliver immediately, persist the latest state
       // atomically without holding WebSocket output behind the storage gate.
       await this.ctx.storage.put({snapshot:s,revision},{allowUnconfirmed:true});
     } else if(msg?.type==='ack' && who.role==='leader' && Number.isInteger(msg.revision)) {
       const revision=this.revision;
-      if(msg.revision===revision&&!who.synced){ws.serializeAttachment({...who,synced:true});this.broadcast(this.presence());}
+      if(msg.revision===revision&&!who.synced){ws.serializeAttachment({...who,synced:true});this.publishPresence();}
+    } else if(msg?.type==='setAccess' && who.role==='controller') {
+      const socket=this.ctx.getWebSockets().find(socket=>{
+        const target=socket.deserializeAttachment();return socket.readyState===1&&target?.role==='leader'&&target.uid===msg.id;
+      });
+      if(!socket)return this.send(ws,{type:'error',error:'此主領已離線'});
+      const target=socket.deserializeAttachment(),level=msg.level;
+      if(!['view','cue','control'].includes(level)||level==='control'&&target.variant!=='4'){
+        return this.send(ws,{type:'error',error:'此主領版型不支援指定權限'});
+      }
+      if(target.clientKey)await this.ctx.storage.put('access:'+target.clientKey,{level,id:target.uid});
+      const updated={...socket.deserializeAttachment(),level};
+      socket.serializeAttachment(updated);
+      this.sendAccess(socket,updated);this.sendSaved(socket);this.publishPresence();
     } else if(msg?.type==='ping') {
       this.send(ws,{type:'pong'});
     } else if(msg?.type==='navigate' && who.role==='leader') {
-      if(!who.canControl)return this.send(ws,{type:'error',error:'此網址僅供瀏覽，無法控制主控'});
+      if(accessLevel(who)==='view')return this.send(ws,{type:'error',error:'目前權限為瀏覽'});
       if(!this.saved?.active?.singing)return this.send(ws,{type:'error',error:'目前為唯讀階段'});
       const t=msg.target;
       if(!t || !Number.isInteger(t.songIndex)||!Number.isInteger(t.sectionIndex)||
@@ -97,16 +136,27 @@ export class ShowRoom extends DurableObject {
          t.songIndex>99||t.sectionIndex>999||t.page>999) return this.send(ws,{type:'error',error:'Invalid navigation target'});
       if(!this.online())return this.send(ws,{type:'error',error:'主控目前離線，無法切換投影片'});
       this.broadcast({type:'navigate',target:t,requestId:crypto.randomUUID()},a=>a.role==='controller');
+    } else if(msg?.type==='playback' && who.role==='leader') {
+      if(accessLevel(who)!=='control')return this.send(ws,{type:'error',error:'切換播放需要控制權限'});
+      if(!this.online())return this.send(ws,{type:'error',error:'主控目前離線，無法切換投影片'});
+      const {action,slideIndex,contentVersion}=msg;
+      if(action==='jump'){
+        if(!Number.isInteger(slideIndex)||slideIndex<0||slideIndex>=this.saved?.slideCount||
+          typeof contentVersion!=='string'||contentVersion!==this.saved?.contentVersion){
+          return this.send(ws,{type:'error',error:'播放清單已變更，請重新選擇頁面'});
+        }
+      }else if(action!=='next'&&action!=='previous')return;
+      this.broadcast({type:'playback',action,slideIndex,contentVersion},a=>a.role==='controller');
     } else if(msg?.type==='request') {
-      if(this.saved)this.send(ws,{type:'state',revision:this.revision,snapshot:this.saved});
+      this.sendSaved(ws);
     }
   }
   webSocketClose(ws) {
     try{ws.close();}catch{}
-    this.broadcast(this.presence());
+    this.publishPresence();
   }
   webSocketError(ws) {
     try{ws.close(1011,'WebSocket error');}catch{}
-    this.broadcast(this.presence());
+    this.publishPresence();
   }
 }
