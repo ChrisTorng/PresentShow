@@ -25,7 +25,7 @@ export function mountLeader({onState,onError=()=>{},showOutsideWorship=false}){
   document.querySelector('meta[name="description"]')?.setAttribute('content',document.title);
  }
  function renderReading(snapshot){
-  if(showOutsideWorship)return;
+  if(showOutsideWorship){if(originalApp)originalApp.hidden=false;return;}
   const outside=!snapshot.active?.singing;reading.hidden=!outside;if(originalApp)originalApp.hidden=outside;
   if(!outside)return;
   const at=snapshot.active.slideIndex,changed=at!==readingPosition;
@@ -47,7 +47,12 @@ export function mountLeader({onState,onError=()=>{},showOutsideWorship=false}){
  let client=null,hasData=false,singing=false,online=false,canControl=false,denied='';
  const status=message=>{const abnormal=/中斷|錯誤|無法|失敗|離線|無效/.test(message);get('leader-sync-status').textContent=abnormal?message:'';get('leader-sync-status').hidden=!abnormal;};
  const showCover=(title,message,button=true)=>{get('leader-cover-title').textContent=title;get('leader-cover-message').textContent=message;get('leader-cover-connect').hidden=!button;cover.hidden=false;};
- const refresh=()=>{if(denied)showCover('無法使用此控制網址',denied);else if(!hasData)showCover('等待主控設定','連線後會自動取得主控的歌曲、歌詞及播放順序。');else cover.hidden=true;chip.classList.toggle('offline',hasData&&!online);get('leader-access-mode').textContent=canControl?'可控制':'僅瀏覽';document.body.classList.toggle('leader-view-only',!canControl);};
+ const refresh=()=>{
+  if(!hasData){if(originalApp)originalApp.hidden=true;reading.hidden=true;}
+  if(denied)showCover('無法使用此控制網址',denied);
+  else if(!hasData&&client)showCover('載入中…','正在等待主控傳送歌曲、歌詞及播放順序。');
+  else if(!hasData)showCover('連接 PresentShow 主控','輸入連線代碼，或掃描主控顯示的 QR Code。');
+  else cover.hidden=true;chip.classList.toggle('offline',hasData&&!online);get('leader-access-mode').textContent=canControl?'可控制':'僅瀏覽';document.body.classList.toggle('leader-view-only',!canControl);};
  const open=()=>{get('leader-settings-error').textContent='';panel.showModal();};
  get('leader-sync-settings').onclick=open;get('leader-cover-connect').onclick=open;
  get('leader-close').onclick=()=>panel.close();
@@ -64,7 +69,7 @@ export function mountLeader({onState,onError=()=>{},showOutsideWorship=false}){
     onStatus:s=>{status(s);if(s.includes('中斷')||s.includes('錯誤'))online=false;refresh();},
     onOpen:()=>{status('已連線，等待主控');client.send({type:'request'});},
     onPresence:isOnline=>{online=isOnline;status(isOnline?'主控在線 · 已同步':'主控離線');refresh();},
-    onState:(snapshot,rev)=>{if(!snapshot||snapshot.schema!==1)return false;hasData=true;singing=!!snapshot.active?.singing;latestSnapshot=snapshot;document.body.dataset.syncReceivedAt=String(Date.now());try{applyLabels(snapshot);onState(snapshot);renderReading(snapshot);}catch(e){onError(e);status('資料套用失敗：'+e.message);return false;}refresh();return true;}
+    onState:(snapshot,rev)=>{if(!snapshot||snapshot.schema!==1)return false;singing=!!snapshot.active?.singing;latestSnapshot=snapshot;document.body.dataset.syncReceivedAt=String(Date.now());try{if(originalApp)originalApp.hidden=false;applyLabels(snapshot);onState(snapshot);renderReading(snapshot);hasData=true;}catch(e){refresh();onError(e);status('資料套用失敗：'+e.message);return false;}refresh();return true;}
    });panel.close();refresh();
   }catch(e){get('leader-settings-error').textContent=e.message;}
  };
@@ -92,6 +97,7 @@ export function mountLeader({onState,onError=()=>{},showOutsideWorship=false}){
    ||!Number.isInteger(target.page)||target.page<0){status('無效的換頁要求');return false;}
   return client.send({type:'navigate',target});
  }
+ get('leader-loading')?.remove();
  refresh();if(validSyncRoom(roomInput.value.trim().toLowerCase())&&urlInput.value.trim())get('leader-connect').click();else open();
  return {navigate,navigateTo,get canControl(){return canControl;}};
 }

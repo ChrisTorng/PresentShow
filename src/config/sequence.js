@@ -38,6 +38,11 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
       const displayLabel=label.startsWith(pageId+' · ')?label.slice(pageId.length+3):label===pageId?'':label;
       push({...page,id:pageId,group,seconds:duration,label:page.type==='blank'?'':displayLabel,background:ref?.background??page.background,transition:ref?.transition??page.transition},{sequence:sequenceIndex,kind:sub===null?'page':'group',sub});
     };
+    const readingFont=section.readingFont;
+    if(readingFont && (!Number.isFinite(readingFont.min) || !Number.isFinite(readingFont.max) ||
+        readingFont.min<=0 || readingFont.max<readingFont.min)){
+      throw new Error(`${title}：readingFont 需要大於 0 的 min 和大於等於 min 的 max。`);
+    }
     section.sequence.forEach((entry,sequenceIndex)=>{
       if(entry && typeof entry==='object' && Object.hasOwn(entry,'song')){
         const song=songs.find(s=>s.id===entry.song || s.title===entry.song);
@@ -88,7 +93,7 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
         const paragraphs=entry.text.trim().split(/\n\s*\n/).filter(p=>p.trim());
         if(!paragraphs.length)throw new Error('文字項目不可為空。');
         paragraphs.forEach((text,i)=>push({id:`text-${sectionIndex}-${sequenceIndex}-${i}`,type:'text',layout:'reading',label:`${entry.title||section.title} · ${i+1}/${paragraphs.length}`,
-          blocks:[{kind:'text',text:text.trim()}],readingTitle:entry.title||section.title,pagination:`${i+1}/${paragraphs.length}`,seconds:0,
+          blocks:[{kind:'text',text:text.trim()}],readingFont,readingTitle:entry.title||section.title,pagination:`${i+1}/${paragraphs.length}`,seconds:0,
           background:entry.backgroundAt?.[i+1]??(i===0?entry.background:undefined),transition:entry.transitionAt?.[i+1]??(i===0?entry.transition:undefined)},
           {sequence:sequenceIndex,kind:'reading',sub:i}));
       }else if(entry && typeof entry==='object' && entry.pages){

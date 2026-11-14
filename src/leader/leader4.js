@@ -1,15 +1,12 @@
-import {songs as prototypeSongs,defaultPlans} from './singer-data.js';
-import {SingerSequence} from './singer-sequence.js';
 import {mountLeader} from './leader-runtime.js';
 import {fixedShortcutSlots,expandedRoute,navigationTarget,nextShortcutRow,songBrowseTarget} from './leader4-flow.js';
 import {repeatRatio} from '../config/repeats.js';
 import {uiLabels} from '../config/ui-labels.js';
 
 const $=id=>document.getElementById(id);
-const initial=new SingerSequence(defaultPlans,prototypeSongs);
-let songs=prototypeSongs,route=initial.route,rows=[],viewedSong=0;
+let songs=[],route=[],rows=[],viewedSong=0;
 let readOnly={before:[],after:[]},viewedArea='worship',catalogKey='',tabSelection=null,labels=uiLabels();
-let active={singing:true,songIndex:0,routeIndex:0,page:0},queued=null;
+let active={singing:false},queued=null;
 let structureKey='',activeKey='',animation=0,frameLock=null;
 const lastPositions=new Map();
 const node=(tag,className,text)=>{const element=document.createElement(tag);element.className=className||'';if(text!==undefined)element.textContent=text;return element;};
@@ -167,7 +164,8 @@ function moveTo(target,{smooth=false,lockFrame=false}={}){
  animation=requestAnimationFrame(step);
 }
 function render({focusSong=false,follow=false,smooth=false}={}){
- const key=(catalogKey||JSON.stringify([songs,route]))+'|'+viewedArea;
+ if(!catalogKey)return;
+ const key=catalogKey+'|'+viewedArea;
  if(key!==structureKey){structureKey=key;rows=expandedRoute(route,songs);buildFlow();}
  viewedSong=Math.min(viewedSong,songs.length-1);renderTabs();renderShortcuts();updateFlow();
  if(focusSong){
@@ -200,4 +198,3 @@ const sync=mountLeader({showOutsideWorship:true,onState:snapshot=>{
  else if(changed||changedShow)viewedArea=next.area||'before';
  activeKey=key;render({follow:changed,smooth:!!structureKey});
 }});
-render({follow:true});

@@ -91,10 +91,17 @@ function fitNextLyrics(){
     for(let i=0;i<8;i++){
       const size=(low+high)/2;
       element.style.fontSize=size+'px';
-      const range=document.createRange();range.selectNodeContents(element);
-      const bounds=range.getBoundingClientRect();
-      if(bounds.height<=element.clientHeight-2&&bounds.width<=element.clientWidth-2&&element.scrollHeight<=element.clientHeight&&element.scrollWidth<=element.clientWidth)low=size;
-      else high=size;
+      // Wrapped text can fill a line to its edge. Measure overflow in the
+      // layout box rather than the union of the wrapped line rectangles.
+      if(element===lyrics){
+        if(element.scrollHeight<=element.clientHeight&&element.scrollWidth<=element.clientWidth)low=size;
+        else high=size;
+      }else{
+        const range=document.createRange();range.selectNodeContents(element);
+        const bounds=range.getBoundingClientRect();
+        if(bounds.height<=element.clientHeight-2&&bounds.width<=element.clientWidth-2&&element.scrollHeight<=element.clientHeight&&element.scrollWidth<=element.clientWidth)low=size;
+        else high=size;
+      }
     }
     element.style.fontSize=Math.max(1,Math.floor(low))+'px';
   }
@@ -102,17 +109,20 @@ function fitNextLyrics(){
 function previewCue(){
   if(!show)return;
   const at=cues.next(show.items,index),item=show.items[at];
-  $('#next-song-title').textContent=item.song?.title||item.section?.title||'';
+  const heading=item.song?.title||item.section?.title||'';
+  $('#next-song-title').textContent=heading;
   const part=item.song?.sectionLabel||item.song?.utility||(item.song?'':item.label)||'';
   const [name,page]=part.split(/\s*·\s*(?=\d+\/\d+$)/);
   const repeat=repeatRatio(item.song?.repeat,cues.nextIteration(show.items,index,at));
   $('#next-page-badge').textContent=page||item.pagination||'';
-  const label=$('#next-part-label'),labelKey=part+'|'+repeat;
+  const duplicate=!item.song&&!!heading&&name.trim()===heading.trim();
+  const label=$('#next-part-label'),labelKey=JSON.stringify([name,repeat,duplicate]);
   if(label.dataset.label!==labelKey){
     label.dataset.label=labelKey;label.replaceChildren();label.classList.toggle('has-page',!!repeat);
-    for(const [text,className] of [[name,'next-part-name'],[repeat,'next-part-repeat']])if(text){const span=document.createElement('span');span.className=className;span.textContent=text;label.append(span);}
+    for(const [text,className] of [[name,'next-part-name'],[repeat,'next-part-repeat']])if(text&&!duplicate){const span=document.createElement('span');span.className=className;span.textContent=text;label.append(span);}
   }
   const panel=$('#next-text-preview');panel.classList.toggle('reading-preview',!item.song);
+  panel.classList.toggle('single-heading-preview',duplicate);
   if(!item.song)delete panel.dataset.kind;
   else panel.dataset.kind=item.song?.utility?'instrumental':
     item.song?.sectionKey==='C'?'chorus':item.song?.sectionKey==='P'?'prechorus':

@@ -1,10 +1,10 @@
-import {songs as prototypeSongs, utilities} from './singer-data.js';
+import {utilities} from './singer-data.js';
 import {mountLeader} from './leader-runtime.js';
-let songs = prototypeSongs;
+let songs = [];
 import {SingerSequence, samePart, nameOf, kindOf, pagesOf} from './singer-sequence.js';
 import {openingLines, compactPartName} from './singer-preview.js';
 const $ = id => document.getElementById(id);
-let sequence = new SingerSequence();
+let sequence;
 let viewedSong = 0;
 // Design preview advances pages internally; the singer UI has no timer controls.
 const previewDuration = 5000;
@@ -136,6 +136,7 @@ function fitButtonText() {
     card.style.removeProperty('--part-separation');
   }
   const headings = [...sections.querySelectorAll('.part-heading')];
+  if(!headings.length)return;
   const titleStyle = getComputedStyle(headings[0].querySelector('strong'));
   const maximum = parseFloat(titleStyle.fontSize);
   const measure = document.createElement('canvas').getContext('2d');
@@ -200,6 +201,7 @@ function fitButtonText() {
   }
 }
 function render() {
+  if(!sequence)return;
   const focused = document.activeElement;
   const selector = focused?.dataset.route ? `[data-route="${focused.dataset.route}"]` : focused?.dataset.section ? `.part-button[data-section="${focused.dataset.section}"]` : null;
   $('song-title').textContent = songs[viewedSong].title;
@@ -259,5 +261,3 @@ const sync=mountLeader({onState:snapshot=>{
  if(queued?.singing&&entry&&!entry.end)sequence.cue={type:queued.routeIndex===sequence.cursor?'page':'section',id:entry.id,page:queued.page||0};
  render();
 }});
-
-render();

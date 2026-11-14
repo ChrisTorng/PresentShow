@@ -91,6 +91,13 @@
 #web-layer{position:absolute;inset:0;background:#fff;z-index:4}#web-layer iframe{width:100%;height:100%;border:0;display:block}
 .web-active #ambient,.web-active #foreground{visibility:hidden}.web-placeholder{background:#f0f3f4;flex-direction:column;text-align:center}.web-placeholder h1{font-size:7cqw}.web-placeholder p{font-size:3cqw}
 .foreground.reading-slide .slide-content{justify-content:flex-start}
+.reading-screen-fit{font-family:"Microsoft JhengHei","Noto Sans TC",sans-serif;color:#082653}
+.foreground.reading-screen-fit .slide-content{inset:12% 1.5% 1.5%;padding:.25cqw 0;background:none;border:0;box-shadow:none}
+.reading-screen-fit .block{line-height:1.08;letter-spacing:0;font-weight:700}
+.reading-screen-fit .reading-row{column-gap:.18em;margin:0}
+.reading-screen-fit .reading-row+.reading-row{margin-top:.14em}
+.reading-screen-fit .reading-number{color:inherit}
+.reading-screen-fit .reading-title{left:4%;top:1.4%;padding:0;border:0;background:none;color:inherit;font-size:4cqw;line-height:1.15;letter-spacing:0;font-weight:700}
 /* Overlay the shared group label inside the role column under the first two characters of 敬拜主領. */
 .roster-group-label{grid-column:2;justify-self:start;width:1em;margin-left:1.3em;z-index:1;pointer-events:none}
 .roster-group-inner{border-bottom-color:transparent}

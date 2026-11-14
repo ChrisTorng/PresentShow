@@ -1,13 +1,14 @@
 // Shortcut slots are the union of the loaded songs and their actual route.
 import {repeatRuns} from '../config/repeats.js';
-const compact=value=>String(value||'').replace(/\s+/g,'').replace(/橋段/g,'小副歌');
-const groups=['intro','verse','prechorus','chorus','tag','interlude','extra','last-line','outro'];
+import {compactSectionName as compact} from '../config/songs.js';
+const groups=['intro','verse','prechorus','chorus','tag','shout','interlude','extra','last-line','outro'];
 const kinds={主歌:'verse',前副歌:'prechorus',副歌:'chorus',小副歌:'tag',尾句:'last-line'};
 const utilityCategories={'前奏':'intro','間奏':'interlude','尾奏':'outro','變奏':'interlude','禱告':'extra','講話':'extra'};
 const utilitySlot=name=>'utility:'+compact(name).replace(/^(.*?)(\d+)$/,(_,base,number)=>base+(Number(number)===1?'':number));
 function sectionSlot(section){
  const label=compact(section?.name),base=label.replace(/\d+$/,'');
  if(Object.hasOwn(utilityCategories,base))return utilitySlot(label);
+ if(base==='呼喊')return 'extra:'+label;
  const kind=kinds[base]||(section?.kind==='bridge'?'tag':section?.kind)||'extra';
  return ['verse','prechorus','chorus','tag','last-line'].includes(kind)?kind+':'+(Number(label.match(/(\d+)$/)?.[1])||1):'extra:'+label;
 }
@@ -21,7 +22,7 @@ export function fixedShortcutSlots(catalog,route=[],viewedSong=0){
  const add=(id,label,kind,category=kind)=>{if(!slots.has(id))slots.set(id,{id,label:compact(label),kind,category:groups.includes(category)?category:'extra'});};
  for(const song of catalog)for(const section of song.sections){
   const id=sectionSlot(section),base=compact(section.name).replace(/\d+$/,'');
-  add(id,section.name,Object.hasOwn(utilityCategories,base)?'instrumental':section.kind==='bridge'?'tag':section.kind,utilityCategories[base]||id.split(':')[0]);
+  add(id,section.name,Object.hasOwn(utilityCategories,base)?'instrumental':section.kind==='bridge'?'tag':section.kind,(base==='呼喊'?'shout':utilityCategories[base]||id.split(':')[0]));
  }
  for(const item of route)if(item.utility){
   const category=utilityCategories[compact(item.utility).replace(/\d+$/,'')]||(item.utility==='尾句'?'last-line':'extra');
@@ -38,7 +39,8 @@ export function fixedShortcutSlots(catalog,route=[],viewedSong=0){
    slot.label=slot.label.replace(/\d+$/,'')+(max>1?number:'');
   }
  }
- return [...slots.values()].sort((a,b)=>groups.indexOf(a.category)-groups.indexOf(b.category)||Number(a.id.split(':')[1]||0)-Number(b.id.split(':')[1]||0)||a.label.localeCompare(b.label,'zh-Hant'));
+ const localSlots=new Set(route.filter(item=>item.song===viewedSong).map(item=>slotFor(item,catalog)));
+ return [...slots.values()].filter(slot=>!localSlots.has('extra:呼喊')||slot.category!=='interlude'||localSlots.has(slot.id)).sort((a,b)=>groups.indexOf(a.category)-groups.indexOf(b.category)||Number(a.id.split(':')[1]||0)-Number(b.id.split(':')[1]||0)||a.label.localeCompare(b.label,'zh-Hant'));
 }
 export function songBrowseTarget(songIndex,active,lastPositions){
  if(active.singing&&active.songIndex===songIndex)return active.routeIndex;

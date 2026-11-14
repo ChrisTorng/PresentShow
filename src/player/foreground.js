@@ -12,8 +12,23 @@ export class ForegroundManager {
       content.style.width=`${scene.clientWidth*.9}px`;
     }
     if(scene.classList.contains('reading-slide')){
-      const block=content.querySelector('.block');let low=1,high=scene.clientWidth*.035;
-      for(let i=0;i<14;i++){const size=(low+high)/2;block.style.fontSize=`${size}px`;if(block.scrollHeight<=content.clientHeight-parseFloat(getComputedStyle(content).paddingTop)-parseFloat(getComputedStyle(content).paddingBottom) && block.scrollWidth<=content.clientWidth+1)low=size;else high=size;}
+      const block=content.querySelector('.block');
+      const {paddingTop,paddingBottom}=getComputedStyle(content);
+      const availableHeight=content.clientHeight-parseFloat(paddingTop)-parseFloat(paddingBottom);
+      const fits=size=>{
+        block.style.fontSize=`${size}px`;
+        return block.scrollHeight<=availableHeight && block.scrollWidth<=block.clientWidth+1;
+      };
+      const scale=scene.clientWidth/100;
+      let low=Math.max(1,(this.readingFont?.min??0)*scale);
+      let high=(this.readingFont?.max??3.5)*scale;
+      // A new page exceeding the calibrated minimum must still fit without clipping.
+      if(!fits(low))low=1;
+      if(fits(high))return;
+      for(let i=0;i<14;i++){
+        const size=(low+high)/2;
+        if(fits(size))low=size;else high=size;
+      }
       block.style.fontSize=`${low}px`;return;
     }
     const height=scene.clientHeight*(scene.classList.contains('lyrics-slide')?.52:.86);
@@ -22,7 +37,7 @@ export class ForegroundManager {
   destroy(){this.observer.disconnect();for(const scene of this.host.children)scene.getAnimations({subtree:true}).forEach(a=>a.cancel());this.host.replaceChildren();}
   render(item,active,cue=false){
     const placeholder=!active && item.type==='media' && item.track?.kind!=='audio';
-    const key=JSON.stringify([item.id,item.type,item.blocks,item.src,item.align,item.layout,item.credit,item.lyricStyle,item.lyricLines,item.pagination,item.heading,item.readingTitle,item.columns,item.qr,item.track?.label,item.track?.poster,placeholder]);
+    const key=JSON.stringify([item.id,item.type,item.blocks,item.src,item.align,item.layout,item.credit,item.lyricStyle,item.lyricLines,item.pagination,item.heading,item.readingTitle,item.readingFont,item.columns,item.qr,item.track?.label,item.track?.poster,placeholder]);
     if(key===this.key)return;this.key=key;this.onError('');
     for(const old of this.exiting){old.getAnimations().forEach(a=>a.cancel());old.remove();}this.exiting.clear();
     const previous=this.current,scene=document.createElement('div');scene.className='foreground';
@@ -45,13 +60,17 @@ export class ForegroundManager {
       const content=document.createElement('div');content.className=`slide-content ${item.align==='left'?'align-left':''}`;
       if(item.blocks?.some(b=>b.kind==='lyrics')){scene.classList.add('lyrics-slide');this.lyricMaxLines=item.lyricMaxLines||2;this.lyricLines=item.lyricLines||item.blocks.flatMap(b=>b.text.split('\n'));if(item.lyricStyle==='shadow')scene.classList.add('lyrics-shadow');}
       if(item.layout==='song-title')scene.classList.add('song-title-slide');
-      if(item.layout==='reading')scene.classList.add('reading-slide');
+      if(item.layout==='reading'){
+        scene.classList.add('reading-slide');
+        this.readingFont=item.readingFont;
+        if(item.readingFont)scene.classList.add('reading-screen-fit');
+      }
       const blocks=placeholder?[{kind:'eyebrow',text:item.section?.title||''},{kind:'title',text:item.track?.label||item.label}]:item.blocks||[];
       if(placeholder && item.track?.poster){const cover=document.createElement('img');cover.src=item.track.poster;cover.className='media-cover';cover.alt='';scene.append(cover);scene.classList.add('media-card-slide');}
       for(const block of blocks){const node=document.createElement(item.layout==='reading'?'div':'p');node.className=`block ${block.kind||'text'}`;if(item.layout==='reading'){node.classList.add('reading-list');for(const row of readingRows(block.text)){const line=document.createElement('div');line.className='reading-row';const number=document.createElement('span');number.className='reading-number';number.textContent=row.number;const text=document.createElement('span');text.className='reading-copy';text.textContent=row.text;line.append(number,text);node.append(line);}}else if(item.layout==='song-title'&&block.kind==='subtitle'){for(const word of block.text.split(/(\s+)/)){const span=document.createElement('span');span.className='small-cap-word';const first=document.createElement('b');first.textContent=word.slice(0,1).toUpperCase();span.append(first,document.createTextNode(word.slice(1).toUpperCase()));node.append(span);}}else node.textContent=block.text;content.append(node);}scene.append(content);
       if(item.credit){const credit=document.createElement('div');credit.className='song-credit';credit.textContent=item.credit;scene.append(credit);}
-      if(item.pagination){const counter=document.createElement('div');counter.className='page-counter';counter.textContent=item.pagination;scene.append(counter);}
-      if(item.readingTitle){const title=document.createElement('div');title.className='reading-title';title.textContent=item.readingTitle;scene.append(title);}
+      if(item.pagination && !item.readingFont){const counter=document.createElement('div');counter.className='page-counter';counter.textContent=item.pagination;scene.append(counter);}
+      if(item.readingTitle){const title=document.createElement('div');title.className='reading-title';title.textContent=item.readingFont && item.pagination?item.readingTitle+" "+item.pagination:item.readingTitle;scene.append(title);}
     }
     if(item.qr){scene.classList.add('has-qr');const qr=document.createElement('img');qr.className='slide-qr';const qrSize=typeof item.qr==='object'?Number(item.qr.size)||13:13;scene.style.setProperty('--qr-size',`${Math.max(8,Math.min(30,qrSize))}%`);qr.src=typeof item.qr==='string'?item.qr:item.qr.src;qr.alt='QR code';scene.append(qr);}
     this.host.append(scene);this.current=scene;this.fit();requestAnimationFrame(()=>this.fit());

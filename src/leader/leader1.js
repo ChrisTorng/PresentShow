@@ -1,10 +1,10 @@
-import {songs as prototypeSongs, utilities} from './singer-data.js';
+import {utilities} from './singer-data.js';
 import {mountLeader} from './leader-runtime.js';
-let songs = prototypeSongs;
+let songs = [];
 import {SingerSequence, samePart, nameOf, kindOf, pagesOf} from './singer-sequence.js';
 import {compactPartName} from './singer-preview.js';
 const $ = id => document.getElementById(id);
-let sequence = new SingerSequence();
+let sequence;
 let viewedSong = 0;
 let renderedSong = 0;
 let renderedPart = null;
@@ -116,6 +116,7 @@ function makeSection(section, sectionIndex) {
   return card;
 }
 function fitLargeButtonText() {
+  if(!sequence)return;
   const sections = $('sections');
   sections.style.removeProperty('--singer1-title-size');
   sections.style.removeProperty('--singer1-lyrics-size');
@@ -153,6 +154,7 @@ function fitLargeButtonText() {
   }
 }
 function render() {
+  if(!sequence)return;
   const focused = document.activeElement;
   const selector = focused?.dataset.route ? `[data-route="${focused.dataset.route}"]` : focused?.dataset.section ? `.section-name[data-section="${focused.dataset.section}"]` : null;
   const scrolls = renderedSong === viewedSong ? new Map([...document.querySelectorAll('.lyrics-pages')].map(element => [element.dataset.pages, element.scrollLeft])) : new Map();
@@ -225,5 +227,3 @@ const sync=mountLeader({onState:snapshot=>{
  if(queued?.singing&&entry&&!entry.end)sequence.cue={type:queued.routeIndex===sequence.cursor?'page':'section',id:entry.id,page:queued.page||0};
  render();
 }});
-
-render();

@@ -1,3 +1,4 @@
+.leader-loading{position:fixed;inset:0;display:grid;place-items:center;margin:0;font-size:1.25rem}
 .leader-cover[hidden]{display:none!important}.leader-cover{position:fixed;inset:0;z-index:800;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(11,24,21,.88);color:#f5faf7}
 .leader-cover-card{max-width:420px;width:100%;padding:25px;border:1px solid #638a7d;border-radius:16px;background:#233c32;text-align:center;box-shadow:0 10px 30px #1118}
 .leader-cover h2{font-size:22px;margin:0 0 15px}.leader-cover p{font-size:15px;line-height:1.6}

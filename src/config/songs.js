@@ -1,7 +1,7 @@
 const aliases={verse:'V',v:'V','主歌':'V','pre-chorus':'P',prechorus:'P','pre chorus':'P',p:'P','導歌':'P','前副歌':'P',chorus:'C',c:'C','副歌':'C',bridge:'B',b:'B','橋段':'B',intro:'I',i:'I','前奏':'I',outro:'O',o:'O','尾奏':'O',tag:'T',t:'T','小副歌':'T',ending:'E',e:'E'};
 export const SONG_KEYS=['V','P','C','B','I','O','T','E'];
 const sectionChinese={V:'主歌',P:'前副歌',C:'副歌',B:'小副歌',I:'前奏',O:'尾奏',T:'小副歌',E:'結尾'};
-export const compactSectionName=name=>String(name||'').replace(/\s+/g,'').replace(/橋段/g,'小副歌');
+export const compactSectionName=name=>String(name||'').replace(/\s+/g,'').replace(/橋段/g,'小副歌').replace(/^呼喊段(?=\d*$)/,'呼喊');
 export function displaySectionName(name, key, number, count=1) {
   const base=sectionChinese[key] || name;
   const stated=String(name||'').match(/(\d+)\s*$/);
@@ -24,7 +24,7 @@ export function parseSongs(source=''){
       song={id:songs.length+1,title,...(english?{english}:{}),...(credit?{credit}:{}),pages:[]};songs.push(song);section='Verse';sectionKey='V';sectionId=0;first=true;
     }else if(/^\[.+\]$/.test(line)){
       flush();if(!song)throw new Error('段落標記前需要 # 歌名。');
-      section=line.slice(1,-1).trim();const normalized=section.toLowerCase().replace(/\s*\d+$/,'');
+      section=line.slice(1,-1).trim().replace(/^呼喊段(?=\s*\d*$)/,'呼喊');const normalized=section.toLowerCase().replace(/\s*\d+$/,'');
       sectionKey=aliases[normalized] || null;sectionId++;first=true;
     }else if(song&&sectionId===0&&!lines.length&&!song.pages.length&&/^[\u4e00-\u9fff\d\s×xX*]+(?:-[\u4e00-\u9fff\d\s×xX*]+)+$/.test(line))song.plan=line;
     else if(!line)flush();

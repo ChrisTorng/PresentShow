@@ -1,9 +1,9 @@
 import {songs, utilities, defaultPlans} from './singer-data.js';
+import {compactSectionName} from '../config/songs.js';
 
 export function itemFor(song, name, catalog = songs) {
-  const normalize=value=>value.replace(/\s+/g,'').replace(/橋段/g,'小副歌');
-  const normalized = normalize(name);
-  const section = catalog[song].sections.findIndex(section => normalize(section.name) === normalized);
+  const normalized = compactSectionName(name);
+  const section = catalog[song].sections.findIndex(section => compactSectionName(section.name) === normalized);
   if (section >= 0) return {song, section};
   if (utilities.includes(normalized.replace(/\d+$/,''))) return {song, utility:normalized};
   throw new Error(`「${catalog[song].title}」沒有段落「${name}」。`);
