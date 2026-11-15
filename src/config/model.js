@@ -54,11 +54,12 @@ export function compile(raw, now = new Date()) {
   });
   return {name:config.name || '未命名投影',labels:uiLabels(vars),items,variables:vars,backgrounds,songs,sections,leaderPlans:config.leaderPlans || {}};
 }
-export function resolveAsset(src, base, assets = new Map()) {
+export function resolveAsset(src, base, assets = new Map(), fromSource = false) {
   const clean = src.replaceAll('\\','/').replace(/^\.\//,'');
   if (assets.has(clean)) return assets.get(clean);
   if (/^(?:[a-z]:[\\/]|file:)/i.test(src)) throw new Error(`不能直接讀取本機路徑：${src}。請選取素材資料夾，並使用相對路徑。`);
   const url = new URL(src,base);
+  if (fromSource && url.protocol === 'http:' && ['localhost','127.0.0.1','[::1]'].includes(url.hostname)) url.host = new URL(base).host;
   if (!['http:','https:','blob:'].includes(url.protocol)) throw new Error('素材僅支援 HTTP、HTTPS 或已選取的本機檔案。');
   return url.href;
 }

@@ -20,12 +20,13 @@ async function ready(){
  }
  throw Error('Worker start timeout: '+logs);
 }
-const room=randomBytes(16).toString('hex'),key=randomBytes(32).toString('hex'),controlKey=randomBytes(32).toString('hex'),base=(remote?remote.replace(/^http/,'ws'):'ws://127.0.0.1:8799')+'/ws/'+room;
-async function open(role,origin='https://present-show.vercel.app',control,client){
+const room=randomBytes(16).toString('hex'),key=randomBytes(32).toString('hex'),controlKey=randomBytes(32).toString('hex'),playbackKey=randomBytes(32).toString('hex'),base=(remote?remote.replace(/^http/,'ws'):'ws://127.0.0.1:8799')+'/ws/'+room;
+async function open(role,origin='https://present-show.vercel.app',control,client,invite={}){
  const params=new URLSearchParams({role});
- if(role==='controller'){params.set('key',key);params.set('controlKey',controlKey);}
+ if(role==='controller'){params.set('key',key);params.set('controlKey',controlKey);params.set('playbackKey',playbackKey);}
  if(control)params.set('control',control);
  if(client){params.set('client',client);params.set('variant','4');}
+ for(const [name,value] of Object.entries(invite))params.set(name,value);
  const ws=new WebSocket(base+'?'+params,{headers:{Origin:origin}});
  sockets.push(ws);ws.messages=[];
  ws.received=new Map();
@@ -48,6 +49,10 @@ try{
  const secondControl=await open('leader',undefined,controlKey);
  assert.equal((await message(a,'access')).canControl,true);assert.equal((await message(secondControl,'access')).canControl,true);assert.equal((await message(b,'access')).canControl,false);
  const denied=await open('leader',undefined,randomBytes(32).toString('hex'));await message(denied,'denied');
+ const deniedUpgrade=await open('leader',undefined,undefined,undefined,{playback:controlKey,variant:'4'});
+ await message(deniedUpgrade,'denied');
+ const deniedVariant=await open('leader',undefined,undefined,undefined,{playback:playbackKey,variant:'3'});
+ await message(deniedVariant,'denied');
  const mobile=await open('leader','http://192.168.1.103:4173');
  await message(mobile,'presence',m=>m.controllerOnline===true);
  await message(a,'presence',m=>m.controllerOnline===true);
@@ -66,6 +71,11 @@ try{
  secondControl.send(JSON.stringify({type:'navigate',target}));await message(host,'navigate');
  const {id}=await message(b,'access');
  const jump={type:'playback',action:'jump',slideIndex:0,contentVersion:'test-show'};
+ const direct=await open('leader',undefined,undefined,undefined,{playback:playbackKey,variant:'4'});
+ const directAccess=await message(direct,'access');assert.equal(directAccess.level,'control');
+ await message(host,'presence',m=>m.controlInvites&&m.clients.some(c=>c.id===directAccess.id&&c.level==='control'));
+ direct.send(JSON.stringify({type:'playback',action:'next'}));await message(host,'playback',m=>m.action==='next');
+ direct.close();await new Promise(resolve=>direct.once('close',resolve));
  a.send(JSON.stringify(jump));await message(a,'error',m=>m.error.includes('控制權限'));
  host.send(JSON.stringify({type:'setAccess',id,level:'control'}));
  await message(b,'access',m=>m.level==='control');
@@ -104,6 +114,20 @@ try{
  }
  const late=await open('leader'),latest=await message(late,'state',m=>m.revision===12);
  assert.equal(latest.snapshot.active.slideIndex,9);
+ const invitation=randomBytes(32).toString('hex');
+ host.send(JSON.stringify({type:'createInvite',id:invitation,variant:'4',level:'control'}));
+ await message(host,'inviteReady',m=>m.id===invitation&&!m.used);
+ const invited=await open('leader',undefined,undefined,undefined,{invite:invitation,variant:'4'});
+ await message(host,'inviteReady',m=>m.id===invitation&&m.used);
+ const issued=await message(invited,'access');
+ assert.equal(issued.level,'control');
+ host.send(JSON.stringify({type:'setAccess',id:issued.id,level:'view'}));
+ await message(invited,'access',m=>m.level==='view');
+ const restored=await open('leader',undefined,undefined,undefined,{invite:invitation,variant:'4',playback:playbackKey});
+ const access=await message(restored,'access');
+ assert.equal(access.id,issued.id);assert.equal(access.level,'view');
+ restored.send(JSON.stringify({type:'playback',action:'next'}));
+ await message(restored,'error',m=>m.error.includes('控制權限'));
  console.log('Live relay timing ('+(remote?'production':'local')+' ms): '+JSON.stringify({median:latencies.toSorted((a,b)=>a-b)[5].toFixed(1),maximum:Math.max(...latencies).toFixed(1)}));
  console.log('Durable Object WebSocket integration passed: per-client access, playback commands, view and cue enforcement, invalid links, reconnect and readonly stages');
 } finally{

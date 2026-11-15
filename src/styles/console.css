@@ -204,7 +204,7 @@ body.console-open{height:100dvh;overflow:hidden}
 .sync-columns>div{min-width:0}
 .sync-columns #sync-invitation{padding-left:24px;border-left:1px solid #d9e4dc}
 .sync-columns input,.sync-columns textarea,.sync-columns select{box-sizing:border-box;width:100%;min-width:0}
-.sync-columns #sync-variant{padding:6px 9px;font-size:15px;border:1px solid #b8cdbf;border-radius:6px;background:#fff;color:#234e43}
+.sync-columns :is(#sync-variant,#sync-invite-level){padding:6px 9px;font-size:15px;border:1px solid #b8cdbf;border-radius:6px;background:#fff;color:#234e43}
 .sync-columns #sync-invitation>.field-label:first-child{margin-top:0}
 .sync-panel-heading{display:flex;align-items:center;justify-content:space-between;font-size:18px}
 .sync-panel-heading button{padding:4px 9px}
@@ -236,6 +236,12 @@ body.console-open{height:100dvh;overflow:hidden}
 .card-menu[open] summary{order:1}
 
 .app-header .actions button.needs-save{background:#fff1bd;border:2px solid #b37a08;color:#704400;font-weight:850;box-shadow:0 0 0 2px #e9b54b35}
+#back.config-pending{background:#a52f30;border-color:#a52f30;color:#fff}
+.playback-console .rail-background,.playback-console .rail-assets .file-option,.playback-console .rail-assets .asset-count,.playback-console #edit-media,.playback-console .sequence-heading > .hint{display:none}
+.config-connection{max-width:540px;margin:64px auto}
+#source-link-dialog{max-width:640px}
+#source-link-dialog select{margin-bottom:14px}
+#source-link{width:100%;margin-bottom:14px}
 .next-text-preview{position:relative}
 .next-page-badge{position:absolute;right:7px;bottom:5px;padding:2px 6px;border-radius:5px;background:#ffffffa8;color:var(--lyric-ink);font-size:clamp(12px,1.1vw,18px);font-weight:650;line-height:1.2;pointer-events:none;opacity:.8}
 .next-page-badge:empty{display:none}
@@ -263,8 +269,7 @@ body.console-open{height:100dvh;overflow:hidden}
 .single-heading-preview .next-part-label{display:none}
 .single-heading-preview .next-lyric-lines{grid-column:1 / -1;grid-row:2;line-height:1.2;align-content:safe center}
 .single-heading-preview .next-page-badge{position:static;grid-column:2;grid-row:1;align-self:center}
-.sync-control-option{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:750}
-.sync-columns .sync-control-option input{width:auto;flex:none}
+.sync-share-actions #sync-leader-open[hidden],.sync-share-actions #sync-qr[hidden]{display:none}
 .sync-popover #sync-link-mode{margin:4px 0 8px;font-size:12px}
 .sync-popover #sync-leader-link{height:142px;font-size:13px;line-height:1.4}
 .sync-share-actions{display:flex;gap:12px;align-items:center;margin-top:10px}

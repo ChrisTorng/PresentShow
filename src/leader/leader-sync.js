@@ -12,7 +12,7 @@ export function normalizeEndpoint(value) {
   url.pathname=url.pathname.replace(/\/$/,'');url.search='';url.hash='';
   return url.toString().replace(/\/$/,'');
 }
-export function createSyncClient({endpoint,room,role,hostKey,controlKey,clientKey,variant,onStatus=()=>{},onOpen=()=>{},onState=()=>{},onNavigate=()=>{},onPlayback=()=>{},onPresence=()=>{},onAccess=()=>{},onDenied=()=>{}}) {
+export function createSyncClient({endpoint,room,role,hostKey,controlKey,playbackKey,clientKey,invite,variant,onStatus=()=>{},onOpen=()=>{},onState=()=>{},onNavigate=()=>{},onPlayback=()=>{},onPresence=()=>{},onInvite=()=>{},onAccess=()=>{},onDenied=()=>{}}) {
   if(!validSyncRoom(room))throw Error('連線代碼必須是 32 位十六進位字元');
   if(role!=='leader' && role!=='controller')throw Error('Invalid role');
   const base=normalizeEndpoint(endpoint), params=new URLSearchParams({role});
@@ -23,8 +23,10 @@ export function createSyncClient({endpoint,room,role,hostKey,controlKey,clientKe
   }else{
     if(controlKey)params.set('control',controlKey);
     if(clientKey)params.set('client',clientKey);
+    if(invite)params.set('invite',invite);
     if(variant)params.set('variant',variant);
   }
+  if(playbackKey)params.set(role==='controller'?'playbackKey':'playback',playbackKey);
   const target=base+'/ws/'+room+'?'+params.toString();
   let socket,active=true,tries=0,timer,heartbeat,connected=false,revision=0,lastPong=0;
   const status=message=>{if(active)onStatus(message);};
@@ -40,6 +42,7 @@ export function createSyncClient({endpoint,room,role,hostKey,controlKey,clientKe
       },15000);
     };
     socket.onmessage=e=>{
+      if(!active)return;
       try {
         const msg=JSON.parse(e.data);
         if(msg.type==='state' && Number.isInteger(msg.revision) && msg.revision>=revision) {
@@ -48,7 +51,8 @@ export function createSyncClient({endpoint,room,role,hostKey,controlKey,clientKe
         } else if(msg.type==='navigate' && role==='controller')onNavigate(msg.target);
         else if(msg.type==='playback' && role==='controller')onPlayback(msg);
         else if(msg.type==='presence')onPresence(msg.controllerOnline,msg.leaderCount??0,{
-          control:msg.cueCount===undefined?0:msg.controlCount??0,cue:msg.cueCount??msg.controlCount??0,view:msg.viewCount??msg.leaderCount??0},msg.clients);
+          control:msg.cueCount===undefined?0:msg.controlCount??0,cue:msg.cueCount??msg.controlCount??0,view:msg.viewCount??msg.leaderCount??0},msg.clients,msg.clientInvites===true);
+        else if(msg.type==='inviteReady'&&role==='controller')onInvite(msg);
         else if(msg.type==='access')onAccess(msg.level??(msg.canControl?'cue':'view'),msg.id);
         else if(msg.type==='denied'){connected=false;clearInterval(heartbeat);onDenied(msg.error);active=false;socket.close();}
         else if(msg.type==='pong')lastPong=Date.now();
@@ -56,7 +60,12 @@ export function createSyncClient({endpoint,room,role,hostKey,controlKey,clientKe
       }catch(err){status('接收資料錯誤：'+err.message);}
     };
     socket.onerror=()=>status('WebSocket 網路錯誤');
-    socket.onclose=()=>{connected=false;clearInterval(heartbeat);if(active)schedule();};
+    socket.onclose=event=>{
+      connected=false;clearInterval(heartbeat);
+      if(!active)return;
+      if(event.code===4001){active=false;onDenied('此邀請已在另一個視窗開啟，請使用主控目前顯示的新邀請。');}
+      else schedule();
+    };
   }
   function schedule() {
     const seconds=Math.min(20,2**Math.min(tries++,4));

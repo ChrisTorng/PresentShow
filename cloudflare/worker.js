@@ -4,6 +4,7 @@ import {validOrigin} from './origin-policy.js';
 
 const KEY = /^[a-f0-9]{64}$/;
 const accessLevel = who => who.level ?? (who.canControl ? 'cue' : 'view');
+const allowsLevel = (level,variant) => ['view','cue','control'].includes(level)&&(level!=='control'||variant==='4');
 const json = (body, status=200) => new Response(JSON.stringify(body), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 
 export default {
@@ -26,8 +27,9 @@ export class ShowRoom extends DurableObject {
   constructor(ctx,env) {
     super(ctx,env);this.ctx=ctx;
     ctx.blockConcurrencyWhile(async()=>{
-      const saved=await ctx.storage.get(['snapshot','revision','controlKey']);
-      this.saved=saved.get('snapshot');this.revision=saved.get('revision')||0;this.controlKey=saved.get('controlKey');
+      const saved=await ctx.storage.get(['snapshot','revision','controlKey','playbackKey']);
+      this.saved=saved.get('snapshot');this.revision=saved.get('revision')||0;
+      this.controlKey=saved.get('controlKey');this.playbackKey=saved.get('playbackKey');
     });
   }
   send(ws,data) {try{ws.send(JSON.stringify(data));}catch{}}
@@ -55,7 +57,8 @@ export class ShowRoom extends DurableObject {
     for(const client of clients)counts[client.level]++;
     const presence={type:'presence',controllerOnline:this.online(),leaderCount:clients.length,
       controlCount:counts.control,cueCount:counts.cue,viewCount:counts.view};
-    for(const ws of sockets)this.send(ws,ws.deserializeAttachment()?.role==='controller'?{...presence,clients}:presence);
+    for(const ws of sockets)this.send(ws,ws.deserializeAttachment()?.role==='controller'
+      ?{...presence,clients,controlInvites:!!this.playbackKey,clientInvites:true}:presence);
   }
   async fetch(request) {
     const url=new URL(request.url),role=url.searchParams.get('role'),key=url.searchParams.get('key')||'';
@@ -63,32 +66,43 @@ export class ShowRoom extends DurableObject {
       const owner=await this.ctx.storage.get('owner');
       if(owner && owner!==key)return json({error:'Room owned by another controller'},403);
       if(!owner)await this.ctx.storage.put('owner',key);
-      const controlKey=url.searchParams.get('controlKey');
-      if(controlKey){
-        if(!KEY.test(controlKey))return json({error:'Invalid control key'},400);
-        if(this.controlKey&&controlKey!==this.controlKey)return json({error:'Control key differs; reset the room to change it'},409);
-        await this.ctx.storage.put('controlKey',controlKey);this.controlKey=controlKey;
+      const keys={};
+      for(const name of ['controlKey','playbackKey']){
+        const value=url.searchParams.get(name);if(!value)continue;
+        if(!KEY.test(value))return json({error:'Invalid invitation key'},400);
+        if(this[name]&&this[name]!==value)return json({error:'Invitation key differs; reset the room to change it'},409);
+        if(!this[name])keys[name]=value;
       }
+      if(Object.keys(keys).length){await this.ctx.storage.put(keys);Object.assign(this,keys);}
     }
     const token=url.searchParams.get('control');
-    const canControl=role==='leader'&&!!token&&token===this.controlKey;
     const variant=url.searchParams.get('variant');
-    const clientKey=role==='leader'&&KEY.test(url.searchParams.get('client')||'')?url.searchParams.get('client'):null;
+    const playback=url.searchParams.get('playback');
+    const validCue=!!token&&token===this.controlKey;
+    const validControl=!!playback&&playback===this.playbackKey&&variant==='4';
+    const invite=role==='leader'?url.searchParams.get('invite'):null;
+    const clientParam=url.searchParams.get('client');
+    const clientKey=role==='leader'&&KEY.test((invite??clientParam)||'')?(invite??clientParam):null;
     const savedAccess=clientKey?await this.ctx.storage.get('access:'+clientKey):null;
     const pair=new WebSocketPair(),[client,server]=Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    if(role==='leader'&&token&&!canControl){
-      server.serializeAttachment({role:'rejected'});this.send(server,{type:'denied',error:'控制網址無效，請向主控取得新的網址。'});server.close(4403,'Invalid control link');
+    if(role==='leader'&&(invite!==null?(!savedAccess?.invited||savedAccess.variant!==variant):
+      savedAccess?.invited||(playback?!validControl:!!token&&!validCue))){
+      server.serializeAttachment({role:'rejected'});this.send(server,{type:'denied',error:'邀請網址無效，請向主控取得新的網址。'});server.close(4403,'Invalid invitation link');
       return new Response(null,{status:101,webSocket:client});
     }
     const who={role,uid:savedAccess?.id??crypto.randomUUID(),clientKey,variant:/^[1-4]$/.test(variant||'')?variant:null,
-      level:savedAccess?.level??(canControl?'cue':'view')};
+      level:savedAccess?.level??(role==='leader'&&validControl?'control':role==='leader'&&validCue?'cue':'view')};
     if(who.level==='control'&&who.variant!=='4')who.level='cue';
+    if(clientKey&&(!savedAccess||invite&&!savedAccess.used)){
+      await this.ctx.storage.put('access:'+clientKey,{...savedAccess,id:who.uid,level:who.level,used:true});
+    }
     if(clientKey)for(const socket of this.ctx.getWebSockets()){
-      if(socket.deserializeAttachment()?.clientKey===clientKey)socket.close(1000,'Reconnected');
+      if(socket.deserializeAttachment()?.clientKey===clientKey)socket.close(4001,'Reconnected');
     }
     server.serializeAttachment(who);
     if(role==='leader')this.sendAccess(server,who);
+    if(invite&&!savedAccess.used)this.broadcast({type:'inviteReady',id:invite,used:true},a=>a.role==='controller');
     this.sendSaved(server);
     this.publishPresence();
     return new Response(null,{status:101,webSocket:client});
@@ -112,16 +126,27 @@ export class ShowRoom extends DurableObject {
     } else if(msg?.type==='ack' && who.role==='leader' && Number.isInteger(msg.revision)) {
       const revision=this.revision;
       if(msg.revision===revision&&!who.synced){ws.serializeAttachment({...who,synced:true});this.publishPresence();}
+    } else if(msg?.type==='createInvite' && who.role==='controller') {
+      const {id,variant,level}=msg;
+      if(!KEY.test(id||'')||!/^[1-4]$/.test(variant||'')||!allowsLevel(level,variant))return;
+      const storageKey='access:'+id;
+      const saved=await this.ctx.storage.get(storageKey);
+      if(saved&&!saved.invited)return this.send(ws,{type:'error',error:'邀請代碼已使用'});
+      if(!saved)await this.ctx.storage.put(storageKey,{id:crypto.randomUUID(),variant,level,invited:true,used:false});
+      this.send(ws,{type:'inviteReady',id,used:!!saved?.used});
     } else if(msg?.type==='setAccess' && who.role==='controller') {
       const socket=this.ctx.getWebSockets().find(socket=>{
         const target=socket.deserializeAttachment();return socket.readyState===1&&target?.role==='leader'&&target.uid===msg.id;
       });
       if(!socket)return this.send(ws,{type:'error',error:'此主領已離線'});
       const target=socket.deserializeAttachment(),level=msg.level;
-      if(!['view','cue','control'].includes(level)||level==='control'&&target.variant!=='4'){
+      if(!allowsLevel(level,target.variant)){
         return this.send(ws,{type:'error',error:'此主領版型不支援指定權限'});
       }
-      if(target.clientKey)await this.ctx.storage.put('access:'+target.clientKey,{level,id:target.uid});
+      if(target.clientKey){
+        const key='access:'+target.clientKey,saved=await this.ctx.storage.get(key);
+        await this.ctx.storage.put(key,{...saved,level,id:target.uid});
+      }
       const updated={...socket.deserializeAttachment(),level};
       socket.serializeAttachment(updated);
       this.sendAccess(socket,updated);this.sendSaved(socket);this.publishPresence();

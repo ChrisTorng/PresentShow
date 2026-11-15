@@ -8,6 +8,7 @@ let songs=[],route=[],rows=[],viewedSong=0;
 let readOnly={before:[],after:[]},viewedArea='worship',catalogKey='',tabSelection=null,labels=uiLabels();
 let active={singing:false},queued=null,previous=null,playback={},extraPages={},lastTap=null,cueTimer;
 let structureKey='',activeKey='',animation=0,frameLock=null;
+let programmaticScrollTop;
 const lastPositions=new Map();
 const node=(tag,className,text)=>{const element=document.createElement(tag);element.className=className||'';if(text!==undefined)element.textContent=text;return element;};
 const announce=message=>{$('announcement').textContent=message;};
@@ -24,15 +25,15 @@ function navigate(row,routePage=0){
  const target=navigationTarget(row,routePage);if(!target)return;
  if(sync.navigateTo(target)){queued={...target,page:routePage};viewedSong=row.song;renderTabs();updateFlow();renderShortcuts();announce('已預選下一項：'+songs[row.song].title+' · '+row.name);}
 }
-function bindPage(button,index,onClick,{mark=true}={}){
+function bindPage(button,index,onClick,{mark=true,tapTarget=button}={}){
  if(mark&&Number.isInteger(index))button.dataset.slideIndex=String(index);
  button.onclick=event=>{
   if(sync.level!=='control'||!Number.isInteger(index)){onClick?.();return;}
   const touch=event.pointerType==='touch',delay=touch?350:500;
-  const doubleTap=lastTap?.index===index&&(event.timeStamp-lastTap.time<=delay||!touch&&event.detail===2);
+  const doubleTap=lastTap?.target===tapTarget&&(event.timeStamp-lastTap.time<=delay||!touch&&event.detail===2);
   clearTimeout(cueTimer);
   if(doubleTap||event.detail===0){lastTap=null;sync.playback('jump',index);return;}
-  lastTap={index,time:event.timeStamp};
+  lastTap={target:tapTarget,time:event.timeStamp};
   if(onClick)cueTimer=setTimeout(()=>{if(sync.level==='control')onClick();},delay);
  };
  button.ondblclick=event=>event.preventDefault();
@@ -68,7 +69,8 @@ function renderShortcuts(){
   shortcuts.replaceChildren(...sections.map(item=>{
    const button=node('button','flow-shortcut instrumental readonly-shortcut',item.sectionTitle);button.type='button';
    button.classList.toggle('playing',pages.some(page=>page.section===item.section&&page.slideIndex===active.slideIndex));
-   button.onclick=()=>moveTo(slideAt(item.slideIndex),{smooth:true});return button;
+   bindPage(button,item.slideIndex,()=>moveTo(slideAt(item.slideIndex),{smooth:true}),
+    {mark:false,tapTarget:'section:'+item.slideIndex});return button;
   }));return;
  }
  const all=fixedShortcutSlots(songs,route,viewedSong),shortcuts=$('section-shortcuts');
@@ -81,7 +83,9 @@ function renderShortcuts(){
   button.classList.toggle('playing',playing);button.classList.toggle('queued',queued?.songIndex===viewedSong&&next?.slot===slot.id);
   button.setAttribute('aria-label',(button.disabled?'本首歌未使用 ':'預選 ')+slot.label);
   if(playing)button.setAttribute('aria-current','step');
-  if(!button.disabled)button.onclick=()=>{const destination=nextShortcutRow(rows,slot.id,viewedSong,active.routeIndex);if(destination)navigate(destination);};
+  const destination=nextShortcutRow(rows,slot.id,viewedSong,active.routeIndex);
+  if(destination)bindPage(button,route[destination.routeIndex].slideIndices?.[0],()=>navigate(destination),
+   {mark:false,tapTarget:'shortcut:'+destination.routeIndex});
   return button;
  }));
 }
@@ -192,12 +196,13 @@ function moveTo(target,{smooth=false,lockFrame=false}={}){
  const scroll=$('flow-scroll'),start=scroll.scrollTop,box=frameBox(target);
  const end=Math.max(0,Math.min(scroll.scrollHeight-scroll.clientHeight,start+box.top-5));
  const duration=smooth&&!matchMedia('(prefers-reduced-motion: reduce)').matches?260:0;
- if(!duration){scroll.scrollTop=end;syncFrames();return;}
+ const scrollTo=top=>{scroll.scrollTop=top;programmaticScrollTop=scroll.scrollTop;syncFrames();};
+ if(!duration){scrollTo(end);return;}
  if(lockFrame){frameLock={...box,top:box.top-(end-start)};syncFrames();}
  const started=performance.now();
  const step=now=>{
   const fraction=Math.min(1,(now-started)/duration),ease=1-Math.pow(1-fraction,3);
-  scroll.scrollTop=start+(end-start)*ease;syncFrames();
+  scrollTo(start+(end-start)*ease);
   if(fraction<1)animation=requestAnimationFrame(step);else{animation=0;frameLock=null;syncFrames();}
  };
  animation=requestAnimationFrame(step);
@@ -215,7 +220,20 @@ function render({focusSong=false,follow=false,smooth=false}={}){
   }
  }else if(follow)moveTo(currentElement(),{smooth,lockFrame:true});
 }
-$('flow-scroll').addEventListener('scroll',syncFrames,{passive:true});
+function followScrolledSong(){
+ if(animation||viewedArea!=='worship')return;
+ const scroll=$('flow-scroll'),line=scroll.getBoundingClientRect().top+Math.min(48,scroll.clientHeight/4);
+ if(scroll.scrollTop===programmaticScrollTop)return;
+ programmaticScrollTop=undefined;
+ const dividers=[...$('flow-sequence').querySelectorAll('.flow-song-divider[data-song-index]')];
+ const visible=scroll.scrollTop+scroll.clientHeight>=scroll.scrollHeight-1&&scroll.scrollTop>0
+  ?dividers.at(-1):dividers.findLast(divider=>divider.getBoundingClientRect().top<=line);
+ if(!visible)return;
+ const song=Number(visible.dataset.songIndex);
+ if(song===viewedSong)return;
+ viewedSong=song;renderTabs();renderShortcuts();
+}
+$('flow-scroll').addEventListener('scroll',()=>{syncFrames();followScrolledSong();},{passive:true});
 for(const event of ['wheel','touchstart','pointerdown'])$('flow-scroll').addEventListener(event,stopFollow,{passive:true});
 window.addEventListener('resize',()=>render({focusSong:true}));
 $('flow-previous').onclick=()=>sync.playback('previous');$('flow-next').onclick=()=>sync.playback('next');

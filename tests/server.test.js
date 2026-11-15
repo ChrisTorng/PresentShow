@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {networkInterfaces} from 'node:os';
+import {request} from 'node:http';
 import { createPresentShowServer, defaultCorsOrigins } from '../server.mjs';
 
 let server, root, base;
@@ -88,6 +89,45 @@ test('cross-origin video retains 206 byte ranges and HEAD metadata', async () =>
   assert.equal(head.headers.get('content-length'), '10');
   assert.equal(head.headers.get('access-control-allow-origin'), Origin);
   assert.equal(await head.text(), '');
+});
+
+test('source writes an updated private config and playback receives only read access and the new revision', async () => {
+  const Origin = defaultCorsOrigins[0];
+  const source = new URL('/__presentshow/source', base);
+  source.searchParams.set('file', '/private/meeting/rehearsal.yml');
+  const initial = 'name: Rehearsal\npages:\n  start: {type: text, title: Old}\nsequence: [start]\n';
+  const localFile = path.join(root, 'private', 'meeting', 'rehearsal.yml');
+  await writeFile(localFile, initial);
+  const opened = await fetch(source, {headers:{Origin}});
+  const data = await opened.json();
+  assert.equal(opened.status, 200, data.error);
+  const playback = new URL(data.playbackPath, base);
+  const get = async url => (await fetch(url, {headers:{Origin}})).json();
+  const head = async () => fetch(playback, {method:'HEAD', headers:{Origin}});
+  const save = (url, text, revision=data.revision) => fetch(url, {
+    method:'POST', headers:{Origin, 'Content-Type':'application/json'}, body:JSON.stringify({text, revision})
+  });
+  assert.equal((await get(playback)).text, initial);
+  assert.equal((await head()).headers.get('etag'), `"${data.revision}"`);
+  assert.equal((await save(playback, initial)).status, 405);
+  const denied = await new Promise((resolve, reject) => {
+    request(source, {headers:{Host:'unrelated.example', Origin}}, response => {
+      response.resume();resolve(response.statusCode);
+    }).on('error', reject).end();
+  });
+  assert.equal(denied, 403);
+  assert.equal((await save(source, 'name: Missing sequence')).status, 400);
+  const updated = initial.replace('Old', 'New');
+  const result = await save(source, updated);
+  assert.equal(result.status, 200);
+  const {revision} = await result.json();
+  assert.equal((await get(playback)).text, updated);
+  assert.equal((await head()).headers.get('etag'), `"${revision}"`);
+  assert.equal((await save(source, initial)).status, 409);
+  const externalEdit = updated.replace('New', 'External edit');
+  await writeFile(localFile, externalEdit);
+  assert.equal((await get(playback)).text, externalEdit);
+  assert.notEqual((await head()).headers.get('etag'), `"${revision}"`);
 });
 
 test('missing files and invalid ranges retain CORS headers; writes stay disabled', async () => {

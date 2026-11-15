@@ -34,7 +34,7 @@ export function renderGrid({container,show,asset,onSelect,onReorder,onEdit}){
     const title=document.createElement('span');title.textContent=section.title;const count=document.createElement('small');count.textContent=`${section.end-section.start+1} 頁`;heading.append(title,count);
     const grid=document.createElement('div');grid.className='slide-grid';
     for(let i=section.start;i<=section.end;i++){
-      const item=show.items[i],card=document.createElement('div');card.className='slide-card';card.dataset.index=i;card.draggable=['song','song-utility','page','group'].includes(item.origin.kind);card.tabIndex=0;card.setAttribute('role','button');card.title=`${i+1}. ${item.label}`;card.setAttribute('aria-label',card.title);
+      const item=show.items[i],card=document.createElement('div');card.className='slide-card';card.dataset.index=i;card.draggable=!!onReorder&&['song','song-utility','page','group'].includes(item.origin.kind);card.tabIndex=0;card.setAttribute('role','button');card.title=`${i+1}. ${item.label}`;card.setAttribute('aria-label',card.title);
       const thumb=document.createElement('div');thumb.className='faithful-thumb';
       const stage=document.createElement('div');stage.className='thumbnail-stage slide-surface';
       stage.style.background=`linear-gradient(130deg,${item.background.colors[0]},${item.background.colors[1]})`;
@@ -56,7 +56,7 @@ export function renderGrid({container,show,asset,onSelect,onReorder,onEdit}){
         card.dataset.lyricKind=kind;
         label.classList.add('song-part-label');
       }
-      if(item.origin.kind==='song'){
+      if(onEdit&&item.origin.kind==='song'){
         const menu=document.createElement('details');menu.className='card-menu';menu.draggable=false;
         const trigger=document.createElement('summary');trigger.textContent='⋯';trigger.title='頁面編排操作';menu.append(trigger);
         const actions=document.createElement('div');actions.className='card-menu-actions';menu.append(actions);
@@ -71,10 +71,13 @@ export function renderGrid({container,show,asset,onSelect,onReorder,onEdit}){
       if(item.song?.sectionPages){const page=document.createElement('span');page.className='card-page';page.textContent=`${item.song.sectionPage}/${item.song.sectionPages}`;meta.append(page);}
       if(item.group){const tag=document.createElement('span');tag.className='group-label';tag.textContent=`↻ ${item.group}`;card.append(tag);}
       card.onclick=()=>onSelect(i);card.onkeydown=e=>{if(e.target===card&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopPropagation();onSelect(i);}};
+      if(onReorder){
       card.ondragstart=e=>{dragging=i;e.dataTransfer.effectAllowed='copyMove';e.dataTransfer.setData('text/plain',String(i));};
       card.ondragover=e=>{if(dragging!==null){e.preventDefault();e.dataTransfer.dropEffect=e.ctrlKey?'copy':'move';card.classList.add('drag-over');}};card.ondragleave=()=>card.classList.remove('drag-over');
       card.ondragend=()=>{dragging=null;container.querySelectorAll('.drag-over').forEach(c=>c.classList.remove('drag-over'));};
-      card.ondrop=e=>{e.preventDefault();card.classList.remove('drag-over');if(dragging!==null && (dragging!==i||e.ctrlKey))onReorder(dragging,i,e.ctrlKey?'copy':'move');dragging=null;};grid.append(card);
+      card.ondrop=e=>{e.preventDefault();card.classList.remove('drag-over');if(dragging!==null && (dragging!==i||e.ctrlKey))onReorder(dragging,i,e.ctrlKey?'copy':'move');dragging=null;};
+      }
+      grid.append(card);
     }
     group.append(heading,grid);container.append(group);
   }

@@ -1,5 +1,6 @@
 import { compile, resolveAsset, youtubeId } from './config/model.js';
 import {parseConfig,formatConfig} from './config/format.js';
+import {configRevision,playbackEndpoint,playbackLink,readSourceConfig,sourceEndpoint,writeSourceConfig} from './config/source-sync.js';
 import {parseSongs,sectionTarget,SONG_KEYS} from './config/songs.js';
 import {BACKGROUND_STYLES,normalizeBackground} from './backgrounds/config.js';
 import {setBackgroundCue,replaceSongText,sequenceFor,setMediaSource} from './config/editing.js';
@@ -15,9 +16,11 @@ const token = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random(
 const preview = $('#preview'),cues=new CueNavigation();
 let nextRenderKey='',nextFitKey='',shield=false,selectedPage=null;const stageErrors=new Map(),titleRequests=new Map();
 let popup = null, popupReady = false, previewReady = false;
-let raw, show, index=0, base=location.href, configSource='';
+const query=new URLSearchParams(location.search),playbackMode=query.has('play');
+let raw, show, index=0, base=location.href;
 let sourceText='',mediaRevision='',backgroundEpoch=Date.now(),backgroundKey='',songToolbarKey='';
 let configBaseline='',saveState='';
+let source=null,appliedRevision='',availableRevision='',configTimer,configBusy=false,loadAttempt=0;
 let mainFrame=0;
 let nextMeasureContext;
 let assets=new Map(), objectUrls=[], playing=false, remaining=0, lastTick=performance.now();
@@ -39,6 +42,7 @@ function saveReminder(){
   $(id).title=saveState?'修改只套用在本次操作，請複製或下載後另存至原設定檔。':label;
  }
  $('#download').textContent=saveState?'下載修改並另存':'下載設定檔';
+ $('#song-editor .editor-footer .hint').textContent=source?'套用後會寫回筆電上的設定檔。':'套用後可在「編輯 YAML」下載完整設定。';
 }
 function markExported(text,state){if(JSON.stringify(parseConfig(text))===JSON.stringify(raw)){saveState=state;saveReminder();}}
 function refreshMain(){if(mainFrame)return;mainFrame=requestAnimationFrame(()=>{mainFrame=0;update();});}
@@ -46,14 +50,15 @@ const fmt = value => `${Math.floor((value||0)/60)}:${String(Math.floor((value||0
 function post(target,type,data={}) {target?.postMessage({presentShow:token,type,...data},location.origin);}
 function programTarget(){return popupReady?popup:preview.contentWindow;}
 function command(action,value){post(programTarget(),'command',{action,value});if(action==='shield'&&popupReady)post(preview.contentWindow,'command',{action,value});}
+function asset(source){return resolveAsset(source,base,assets,playbackMode);}
 function effectiveItem(at=index){
   const item=structuredClone(show.items[at]);
-  if(item.qr)item.qr=typeof item.qr==='string'?resolveAsset(item.qr,base,assets):{...item.qr,src:resolveAsset(item.qr.src,base,assets)};
+  if(item.qr)item.qr=typeof item.qr==='string'?asset(item.qr):{...item.qr,src:asset(item.qr.src)};
   if(item.track?.kind==='youtube')item.track.poster=`https://i.ytimg.com/vi/${youtubeId(item.track.src)}/hqdefault.jpg`;
-  if(item.src)item.src=resolveAsset(item.src,base,assets);
-  if(item.track && item.track.kind!=='youtube')item.track.src=resolveAsset(item.track.src,base,assets);
-  if(item.background.src)item.background.src=resolveAsset(item.background.src,base,assets);
-  if(item.background.poster)item.background.poster=resolveAsset(item.background.poster,base,assets);
+  if(item.src)item.src=asset(item.src);
+  if(item.track && item.track.kind!=='youtube'){item.track.src=asset(item.track.src);if(item.track.poster)item.track.poster=asset(item.track.poster);}
+  if(item.background.src)item.background.src=asset(item.background.src);
+  if(item.background.poster)item.background.poster=asset(item.background.poster);
   if(blackout && at===index){item.type='blank';item.blocks=[];}
   return item;
 }
@@ -220,13 +225,13 @@ async function fetchTitles(compiled){
 }
 function grid(){
   $('#item-count').textContent=`${show.items.length} 個畫面`;
-  renderGrid({container:$('#grid'),show,asset:source=>resolveAsset(source,base,assets),onSelect:selectCue,onReorder:reorder,onEdit:editSlide});
+  renderGrid({container:$('#grid'),show,asset,onSelect:selectCue,onReorder:playbackMode?null:reorder,onEdit:playbackMode?null:editSlide});
   renderOutline($('#section-nav'),show,(next,section)=>{selectCue(next);document.querySelector(`#section-${section}`).scrollIntoView({block:'start',behavior:'smooth'});});
 }
-function reorder(from,to,action='move'){
+async function reorder(from,to,action='move'){
   const a=show.items[from].origin,b=show.items[to].origin;
   if(['song','song-utility'].includes(a.kind)&&['song','song-utility'].includes(b.kind)){
-    try{applyRaw(editArrangement(raw,show,a,action,b),undefined,true);notice(action==='copy'?'歌詞引用已複製。':'播放順序已調整。');}
+    try{await saveEdit(editArrangement(raw,show,a,action,b));notice(action==='copy'?'歌詞引用已複製。':'播放順序已調整。');}
     catch(e){notice(e.message);}
     return;
   }
@@ -242,14 +247,14 @@ function reorder(from,to,action='move'){
     if(action==='copy')list.splice(b.sequence+1,0,structuredClone(list[a.sequence]));
     else list.splice(b.sequence,0,list.splice(a.sequence,1)[0]);
   }else{notice('這個位置不可拖曳編排。');return;}
-  applyRaw(next,undefined,true);notice(action==='copy'?'已複製播放引用。':'播放順序已調整。');
+  try{await saveEdit(next);notice(action==='copy'?'已複製播放引用。':'播放順序已調整。');}catch(e){notice(e.message);}
 }
-function editSlide(at,action){
-  if(!show?.items[at])return;
+async function editSlide(at,action){
+  if(playbackMode||!show?.items[at])return;
   const origin=show.items[at].origin;
   try{
     if(['song','song-utility'].includes(origin.kind)){
-      applyRaw(editArrangement(raw,show,origin,action),undefined,true);
+      await saveEdit(editArrangement(raw,show,origin,action));
     }else if(['page','group'].includes(origin.kind)){
       const next=structuredClone(raw),list=sequenceFor(next,origin);
       const pages=origin.kind==='group'?list[origin.sequence].pages:list;
@@ -260,17 +265,16 @@ function editSlide(at,action){
       }else if(action==='copy')pages.splice(i+1,0,structuredClone(pages[i]));
       else if(action==='up'&&i>0)pages.splice(i-1,0,pages.splice(i,1)[0]);
       else if(action==='down'&&i<pages.length-1)pages.splice(i+1,0,pages.splice(i,1)[0]);
-      applyRaw(next,undefined,true);
+      await saveEdit(next);
     }else throw Error('這個頁面是自動產生的邊界或標題，請編輯 YAML 調整。');
     selectedPage=null;
-    notice('播放編排已更新，原始歌詞維持單一來源。請下載設定檔保存。');
+    notice('播放編排已更新。'+saveMessage());
   }catch(e){notice(e.message);}
 }
-function applyRaw(candidate,text,preserve=false){
-  const compiled=compile(candidate);
+function applyRaw(candidate,text,preserve=false,compiled=compile(candidate)){
   const previous=show,previousIndex=index,queued=preserve?remapPosition(previous,compiled,cues.pending):null;
   const serialized=JSON.stringify(candidate);
-  if(!preserve){configBaseline=serialized;saveState='';}
+  if(source||!preserve){configBaseline=serialized;saveState='';}
   else if(serialized===configBaseline)saveState='';
   else if(serialized!==JSON.stringify(raw))saveState='changed';
   if(preserve&&previous){
@@ -308,17 +312,134 @@ function applyRaw(candidate,text,preserve=false){
   }
   $('#media-status').textContent='投影視窗開啟後，聲音只從投影視窗播放。';saveReminder();leaderSync.publish();leaderSync.renderStatus();grid();render(preserve?media.time:undefined);update();fetchTitles(show);
 }
+const saveMessage=()=>source?'已儲存至筆電的設定檔。':'請複製或下載另存。';
+async function saveEdit(candidate,text){
+  if(!source){applyRaw(candidate,text,true);return;}
+  if(configBusy)throw Error('設定正在同步，請稍後再試。');
+  const compiled=compile(candidate);
+  configBusy=true;
+  try {
+    const updated=text??formatConfig(candidate);
+    // Keep the underlying format when the source is a JSON file.
+    const serialized=source.searchParams.get('file').toLowerCase().endsWith('.json')?JSON.stringify(candidate,null,2)+'\n':updated;
+    appliedRevision=await writeSourceConfig(source,serialized,appliedRevision);
+    applyRaw(candidate,serialized,true,compiled);
+  } finally {configBusy=false;}
+}
+
+function applyConfig(data,preserve,compiled=compile(data.raw)){
+  base=data.base;
+  applyRaw(data.raw,data.text,preserve,compiled);
+  appliedRevision=data.revision;
+}
+
+function renderUpdateButton(error=''){
+  const button=$('#back');
+  const pending=!!availableRevision&&availableRevision!==appliedRevision;
+  button.disabled=configBusy||!pending;
+  button.classList.toggle('config-pending',pending);
+  button.title=error|| (pending?'來源主控有新版設定':'已同步至來源主控');
+  button.textContent=configBusy?'更新中…':'更新設定';
+}
+
+function watchConfig(endpoint){
+  clearTimeout(configTimer);
+  async function poll(){
+    try {
+      if(configBusy)return;
+      const revision=await configRevision(endpoint);
+      if(endpoint!==source||configBusy)return;
+      if(playbackMode){availableRevision=revision;renderUpdateButton();}
+      else if(revision!==appliedRevision&&$('#entry').hidden&&!document.querySelector('dialog[open]')){
+        const previous=appliedRevision;
+        const data=await readSourceConfig(endpoint);
+        if(endpoint!==source||configBusy||previous!==appliedRevision||!$('#entry').hidden||document.querySelector('dialog[open]'))return;
+        if(data.revision!==appliedRevision){applyConfig(data,true);notice('已載入筆電上的新版設定。');}
+      }
+    } catch(e){
+      if(endpoint!==source)return;
+      if(playbackMode)renderUpdateButton('來源主控暫時無法連線。');
+      else if(e.message!==poll.lastError)notice(`來源主控無法讀取設定：${e.message}`);
+      poll.lastError=e.message;
+    } finally {
+      if(endpoint===source)configTimer=setTimeout(poll,1500);
+    }
+  }
+  configTimer=setTimeout(poll,1500);
+}
+
+async function syncFromSource(){
+  if(configBusy)return;
+  configBusy=true;
+  $('#connect-source').disabled=true;
+  $('#playback-status').textContent='正在讀取來源主控…';
+  renderUpdateButton();
+  try {
+    const endpoint=playbackEndpoint(query.get('play'));
+    const data=await readSourceConfig(endpoint);
+    applyConfig(data,!!show);
+    source=endpoint;
+    availableRevision=appliedRevision;
+    $('#playback-entry').hidden=true;
+    watchConfig(source);
+  } catch(e) {
+    const message=e instanceof TypeError||e.name==='TimeoutError'?'無法連線。請確認筆電的 npm start 正在執行、兩台電腦在同一個網路，並允許瀏覽器存取區域網路。':e.message;
+    $('#playback-status').textContent=message;
+    if(show)notice(message);
+  } finally {
+    configBusy=false;
+    $('#connect-source').disabled=false;
+    renderUpdateButton();
+  }
+}
+
+function setupSourceLink(data){
+  const selector=$('#source-address'),input=$('#source-link'),dialog=$('#source-link-dialog');
+  selector.replaceChildren();
+  for(const address of data.addresses){
+    try{playbackLink(location.href,base,address,data.playbackPath);selector.add(new Option(address,address));}catch{}
+  }
+  selector.onchange=()=>{
+    input.value=selector.value?playbackLink(location.href,base,selector.value,data.playbackPath):'';
+    $('#copy-source-link').disabled=!input.value;
+    $('#source-link-status').textContent=input.value?'':'找不到可用的區網 IPv4 位址。';
+  };
+  selector.onchange();
+  $('#source-link-button').hidden=false;
+  $('#source-link-button').onclick=async()=>{
+    dialog.showModal();
+    try {
+      const previous=selector.value,latest=await readSourceConfig(source);
+      setupSourceLink(latest);
+      if([...selector.options].some(option=>option.value===previous)){selector.value=previous;selector.onchange();}
+    }catch(e){$('#source-link-status').textContent=e.message;}
+  };
+}
+
 async function loadURL(value){
+  const attempt=++loadAttempt;
   try{
     const url=new URL(value,location.href);if(!['http:','https:'].includes(url.protocol))throw new Error('本機設定請使用「選取本機 JSON 設定檔」。');
+    const endpoint=sourceEndpoint(url.href);
+    if(endpoint){
+      const data=await readSourceConfig(endpoint);
+      if(attempt!==loadAttempt)return;
+      const compiled=compile(data.raw);
+      source=endpoint;
+      applyConfig(data,false,compiled);
+      setupSourceLink(data);
+      watchConfig(source);
+      return;
+    }
     const response=await fetch(url,{cache:'no-store'});if(!response.ok)throw new Error(`讀取失敗：HTTP ${response.status}`);
-    const text=await response.text(),candidate=parseConfig(text);compile(candidate);base=response.url;configSource=url.href;applyRaw(candidate,text);
-  }catch(e){notice(`無法載入設定：${e.message}`);}
+    const text=await response.text();if(attempt!==loadAttempt)return;
+    const candidate=parseConfig(text);compile(candidate);source=null;$('#source-link-button').hidden=true;base=response.url;applyRaw(candidate,text);
+  }catch(e){if(attempt===loadAttempt)notice(`無法載入設定：${e.message}`);}
 }
 $('#sample').onclick=()=>loadURL('examples/sample.yml');
 $('#load-url').onclick=()=>loadURL($('#config-url').value.trim());
 $('#config-url').onkeydown=e=>{if(e.key==='Enter')$('#load-url').click();};
-$('#config-file').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const text=await file.text(),candidate=parseConfig(text);compile(candidate);base=location.href;configSource=file.name;applyRaw(candidate,text);}catch(err){notice(`設定檔錯誤：${err.message}`);}e.target.value='';};
+$('#config-file').onchange=async e=>{const file=e.target.files[0];if(!file)return;const attempt=++loadAttempt;try{const text=await file.text();if(attempt!==loadAttempt)return;const candidate=parseConfig(text);compile(candidate);source=null;$('#source-link-button').hidden=true;base=location.href;applyRaw(candidate,text);}catch(err){notice(`設定檔錯誤：${err.message}`);}finally{e.target.value='';}};
 for(const input of document.querySelectorAll('.assets-input'))input.onchange=e=>{
   // Retain old blob URLs until page unload: currently playing media must not be invalidated.
   assets=new Map();
@@ -349,10 +470,16 @@ function openProjector(){
   else setTimeout(()=>{if(popup && !popup.closed && !popupReady)notice('投影視窗尚未連線。若目前瀏覽器不支援獨立視窗，請用 Chrome／Edge 開啟相同網址再試。');},8000);
 }
 $('#open-projector').onclick=openProjector;$('#focus-projector').onclick=openProjector;
-$('#back').onclick=()=>{playing=false;mediaWantsPlay=false;command('play',false);$('#controller').hidden=true;$('#entry').hidden=false;document.body.classList.remove('console-open');};
+$('#back').onclick=playbackMode?syncFromSource:()=>{playing=false;mediaWantsPlay=false;command('play',false);$('#controller').hidden=true;$('#entry').hidden=false;document.body.classList.remove('console-open');};
+$('#close-source-link').onclick=()=>$('#source-link-dialog').close();
+$('#copy-source-link').onclick=async()=>{
+ const input=$('#source-link');
+ try{await navigator.clipboard.writeText(input.value);$('#source-link-status').textContent='已複製連結。';}
+ catch{input.select();$('#source-link-status').textContent='請複製已選取的連結。';}
+};
 $('#edit').onclick=()=>{$('#config-text').value=sourceText;$('#editor-error').textContent='';$('#editor').showModal();};
 $('#close-editor').onclick=()=>$('#editor').close();
-$('#apply').onclick=()=>{try{const text=$('#config-text').value;applyRaw(parseConfig(text),text,true);$('#editor').close();notice('設定已套用，播放與預選位置已保留；請下載保存修改。');}catch(e){$('#editor-error').textContent=e.message;}};
+$('#apply').onclick=async()=>{try{const text=$('#config-text').value;await saveEdit(parseConfig(text),text);$('#editor').close();notice('設定已套用，播放與預選位置已保留。'+saveMessage());}catch(e){$('#editor-error').textContent=e.message;}};
 $('#download').onclick=()=>{try{const text=$('#config-text').value;compile(parseConfig(text));const url=URL.createObjectURL(new Blob([text],{type:'text/yaml;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='presentation.private.yml';a.click();markExported(text,'downloaded');setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){$('#editor-error').textContent=e.message;}};
 $('#copy-config').onclick=async()=>{try{const text=$('#config-text').value;compile(parseConfig(text));await navigator.clipboard.writeText(text);markExported(text,'copied');notice('已複製 YAML；請貼上並另存至設定檔。');}catch(e){$('#editor-error').textContent='無法自動複製，請選取文字複製：'+e.message;$('#config-text').select();}};
 $('#edit-media').onclick=()=>{
@@ -360,18 +487,18 @@ $('#edit-media').onclick=()=>{
  $('#media-source').value=track.src;$('#media-title').value=track.label||'';$('#media-kind').value=track.kind;$('#media-start').value=track.startInput??'';$('#media-error').textContent='';$('#media-editor').showModal();
 };
 $('#close-media').onclick=()=>$('#media-editor').close();
-$('#apply-media').onclick=()=>{try{
+$('#apply-media').onclick=async()=>{try{
  const start=$('#media-start').value.trim();parseMediaTime(start);
- applyRaw(setMediaSource(raw,show,index,{kind:$('#media-kind').value,src:$('#media-source').value.trim(),label:$('#media-title').value.trim(),start}),undefined,true);
- $('#media-editor').close();notice('媒體網址與起播時間已套用；請複製或下載另存。');
+ await saveEdit(setMediaSource(raw,show,index,{kind:$('#media-kind').value,src:$('#media-source').value.trim(),label:$('#media-title').value.trim(),start}));
+ $('#media-editor').close();notice('媒體網址與起播時間已套用。'+saveMessage());
 }catch(e){$('#media-error').textContent=e.message;}};
 $('#edit-songs').onclick=()=>{$('#song-text').value=raw.songs||'';$('#song-error').textContent='';$('#song-editor').showModal();};
 $('#close-songs').onclick=()=>$('#song-editor').close();
-$('#apply-songs').onclick=()=>{
-  try{const source=$('#song-text').value;const next=replaceSongText(raw,source,parseSongs(raw.songs||''),parseSongs(source));applyRaw(next,undefined,true);$('#song-editor').close();notice('歌詞已更新，播放與預選位置已保留；請下載設定保存。');}
+$('#apply-songs').onclick=async()=>{
+  try{const lyrics=$('#song-text').value;const next=replaceSongText(raw,lyrics,parseSongs(raw.songs||''),parseSongs(lyrics));await saveEdit(next);$('#song-editor').close();notice('歌詞已更新，播放與預選位置已保留。'+saveMessage());}
   catch(e){$('#song-error').textContent=e.message;}
 };
-$('#background-choice').onchange=e=>{try{applyRaw(setBackgroundCue(raw,show.items[index],e.target.value),undefined,true);notice('已記錄此頁的背景切換；後續頁面會延續，直到下一個背景設定。');}catch(err){notice(err.message);}};
+$('#background-choice').onchange=async e=>{try{await saveEdit(setBackgroundCue(raw,show.items[index],e.target.value));notice('已記錄此頁的背景切換；後續頁面會延續，直到下一個背景設定。');}catch(err){e.target.value=show.items[index].background.id;notice(err.message);}};
 for(const [type,meta] of Object.entries(BACKGROUND_STYLES)){const option=document.createElement('option');option.value=type;option.textContent=meta.label;$('#bg-type').append(option);}
 $('#edit-background').onclick=()=>{
   const bg=show.items[index].background;
@@ -381,7 +508,7 @@ $('#edit-background').onclick=()=>{
   $('#bg-src').value=bg.src||'';$('#bg-fit').value=bg.fit||'cover';$('#background-error').textContent='';$('#background-editor').showModal();
 };
 $('#close-background').onclick=()=>$('#background-editor').close();
-$('#apply-background').onclick=()=>{
+$('#apply-background').onclick=async()=>{
   try{
     const id=$('#bg-id').value.trim();if(!id)throw new Error('請輸入背景名稱。');
     const config={type:$('#bg-type').value,seed:$('#bg-seed').value,colors:[$('#bg-color-a').value,$('#bg-color-b').value],src:$('#bg-src').value.trim(),fit:$('#bg-fit').value};
@@ -392,7 +519,7 @@ $('#apply-background').onclick=()=>{
     const candidate=setBackgroundCue(raw,show.items[index],id);candidate.backgrounds={...raw.backgrounds,[id]:config};
     // Legacy JSON has an implicit default background; retain it for all earlier pages.
     if(!raw.backgrounds)candidate.backgrounds={...show.backgrounds,...candidate.backgrounds};
-    applyRaw(candidate,undefined,true);$('#background-editor').close();notice('背景已更新，媒體保持播放；請下載設定保存。');
+    await saveEdit(candidate);$('#background-editor').close();notice('背景已更新，媒體保持播放。'+saveMessage());
   }catch(e){$('#background-error').textContent=e.message;}
 };
 function key(key){
@@ -431,7 +558,18 @@ setInterval(()=>{
   if(show && playing && !blackout && !shield && remaining>0){remaining=Math.max(0,remaining-delta);if(remaining===0){const next=show.items[index].autoNext;if(cues.pending!==null || next!==null)go(cues.pending??next);else playing=false;}update();}
 },200);
 window.addEventListener('beforeunload',()=>{command('play',false);popup?.close();objectUrls.forEach(url=>URL.revokeObjectURL(url));});
-const initial=new URLSearchParams(location.search).get('config');if(initial){$('#config-url').value=initial;loadURL(initial);}
+const sourceLinkButton=document.createElement('button');
+sourceLinkButton.id='source-link-button';sourceLinkButton.type='button';sourceLinkButton.textContent='播放主控連結';sourceLinkButton.hidden=true;
+$('#back').after(sourceLinkButton);
+if(playbackMode){
+  document.body.classList.add('playback-console');
+  $('#edit').hidden=true;$('#edit-songs').hidden=true;
+  $('#entry').hidden=true;$('#playback-entry').hidden=false;
+  $('#connect-source').onclick=syncFromSource;
+  renderUpdateButton();
+} else if(query.has('config')){
+  const initial=query.get('config');$('#config-url').value=initial;loadURL(initial);
+}
 
 const dockHandle=$('#dock-resize-handle');
 function setDockHeight(height){

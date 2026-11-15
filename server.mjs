@@ -4,6 +4,7 @@ import { createReadStream } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { networkInterfaces } from 'node:os';
+import {configRoute,createConfigHandler} from './source-config.mjs';
 
 export const defaultCorsOrigins = [
   'https://present-show.vercel.app',
@@ -30,7 +31,11 @@ const types = {'.jpg':'image/jpeg','.jpeg':'image/jpeg','.webm':'video/webm','.y
 export function createPresentShowServer({ root = process.cwd(), extraOrigins = process.env.PRESENTSHOW_CORS_ORIGINS } = {}) {
  root = path.resolve(root);
  const origins = corsOrigins(extraOrigins);
+ const configHandler = createConfigHandler(root);
  return http.createServer(async (req,res) => {
+  const url = new URL(req.url, 'http://localhost');
+  const isConfigRoute = url.pathname.startsWith(configRoute);
+  const methods = isConfigRoute ? [...allowedMethods, 'POST'] : allowedMethods;
   res.setHeader('Vary', 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network');
   const origin = req.headers.origin;
   const address = req.socket.localAddress?.replace(/^::ffff:/, '');
@@ -40,15 +45,15 @@ export function createPresentShowServer({ root = process.cwd(), extraOrigins = p
   }
   if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges, ETag');
   }
-  if (!allowedMethods.includes(req.method)) {
-    res.writeHead(405, {Allow: allowedMethods.join(', ')});res.end('Method not allowed');return;
+  if (!methods.includes(req.method)) {
+    res.writeHead(405, {Allow: methods.join(', ')});res.end('Method not allowed');return;
   }
   if (req.method === 'OPTIONS') {
     const method = req.headers['access-control-request-method'];
     const headers = (req.headers['access-control-request-headers'] || '').split(',').map(header => header.trim().toLowerCase()).filter(Boolean);
-    if ((method && !['GET', 'HEAD'].includes(method)) || headers.some(header => !allowedHeaders.includes(header))) {
+    if ((method && !methods.includes(method)) || headers.some(header => !allowedHeaders.includes(header))) {
       res.writeHead(403);res.end('Preflight not allowed');return;
     }
     if (origin) {
@@ -58,10 +63,11 @@ export function createPresentShowServer({ root = process.cwd(), extraOrigins = p
       // Compatibility with browsers that still use Private Network Access preflights.
       if (req.headers['access-control-request-private-network'] === 'true') res.setHeader('Access-Control-Allow-Private-Network', 'true');
     }
-    res.writeHead(204, {Allow: allowedMethods.join(', ')});res.end();return;
+    res.writeHead(204, {Allow: methods.join(', ')});res.end();return;
   }
+  if (isConfigRoute) return configHandler(req,res,url);
   try {
-    const pathname = decodeURIComponent(new URL(req.url,'http://localhost').pathname);
+    const pathname = decodeURIComponent(url.pathname);
     const file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
     if (!file.startsWith(root + path.sep) || pathname.split('/').some(p => p.startsWith('.'))) throw new Error();
     const info = await stat(file);if(!info.isFile())throw new Error();

@@ -4,7 +4,7 @@ import {applyUILabels,uiLabels} from '../config/ui-labels.js';
 export function mountLeader({onState,onError=()=>{},onAccessChange=()=>{},showOutsideWorship=false}){
  const params=new URLSearchParams(location.search),get=id=>document.getElementById(id);
  const variant=location.pathname.match(/leader([1-4])\.html$/)?.[1]||'';
- const clientKey=newHostKey();
+ const clientKeys=new Map();
  const cover=document.createElement('section');cover.id='leader-cover';cover.className='leader-cover';
  cover.innerHTML='<div class="leader-cover-card"><h2 id="leader-cover-title">連接 PresentShow 主控</h2><p id="leader-cover-message">輸入連線代碼，或掃描主控顯示的 QR Code。</p><button id="leader-cover-connect">設定連線</button></div>';document.body.append(cover);
  const chip=document.createElement('div');chip.className='leader-sync-chip';
@@ -50,7 +50,7 @@ export function mountLeader({onState,onError=()=>{},onAccessChange=()=>{},showOu
  const showCover=(title,message,button=true)=>{get('leader-cover-title').textContent=title;get('leader-cover-message').textContent=message;get('leader-cover-connect').hidden=!button;cover.hidden=false;};
  const refresh=()=>{
   if(!hasData){if(originalApp)originalApp.hidden=true;reading.hidden=true;}
-  if(denied)showCover('無法使用此控制網址',denied);
+  if(denied)showCover('無法使用此邀請',denied);
   else if(!hasData&&client)showCover('載入中…','正在等待主控傳送歌曲、歌詞及播放順序。');
   else if(!hasData)showCover('連接 PresentShow 主控','輸入連線代碼，或掃描主控顯示的 QR Code。');
   else cover.hidden=true;
@@ -71,8 +71,17 @@ export function mountLeader({onState,onError=()=>{},onAccessChange=()=>{},showOu
    if(!validSyncRoom(room))throw Error('連線代碼格式錯誤，請直接複製主控提供的代碼。');
    client?.close();hasData=false;singing=false;online=false;denied='';setAccess('view');
    localStorage.setItem('present-show-leader-room',room);localStorage.setItem('present-show-relay-url',endpoint);
-   const controlKey=params.get('mode')==='view'?undefined:params.get('control')||undefined;
-   client=createSyncClient({room,endpoint,role:'leader',controlKey,variant,clientKey,
+   const usesInvite=room===params.get('room')&&normalizeEndpoint(params.get('ws')||endpoint)===endpoint;
+   const invite=usesInvite?params.get('id'):null;
+   const controlKey=usesInvite&&!invite&&params.get('mode')!=='view'?(params.get('cue')||params.get('control')):null;
+   const playbackKey=usesInvite&&!invite&&params.get('mode')==='control'?params.get('playback'):null;
+   const storageKey='present-show-client:'+endpoint+':'+room+':'+variant;
+   let clientKey;
+   if(!invite){
+    clientKey=sessionStorage.getItem(storageKey)||clientKeys.get(storageKey)||newHostKey();
+    sessionStorage.setItem(storageKey,clientKey);clientKeys.set(storageKey,clientKey);
+   }
+   client=createSyncClient({room,endpoint,role:'leader',controlKey,playbackKey,variant,clientKey,invite,
     onAccess:setAccess,
     onDenied:message=>{denied=message;setAccess('view');},
     onStatus:s=>{status(s);if(s.includes('中斷')||s==='WebSocket 網路錯誤'){online=false;setAccess('view');}},
