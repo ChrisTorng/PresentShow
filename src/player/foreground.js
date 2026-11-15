@@ -2,7 +2,21 @@ import {readingRows} from '../config/text.js';
 export class ForegroundManager {
   constructor(host,onError){this.host=host;this.onError=onError;this.current=null;this.exiting=new Set();this.key='';this.observer=new ResizeObserver(()=>this.fit());this.observer.observe(host);}
   fit(){
-    const scene=this.current,content=scene?.querySelector('.slide-content');if(!content)return;
+    const scene=this.current;
+    for(const field of scene?.querySelectorAll('.roster-with-topic .roster-row > *, .roster-topic')??[]){
+      if(!field.clientWidth)continue;
+      field.style.removeProperty('font-size');
+      if(field.scrollWidth>field.clientWidth){
+        let low=0,high=parseFloat(getComputedStyle(field).fontSize);
+        for(let i=0;i<12;i++){
+          const size=(low+high)/2;
+          field.style.fontSize=`${size}px`;
+          if(field.scrollWidth>field.clientWidth)high=size;else low=size;
+        }
+        field.style.fontSize=`${low}px`;
+      }
+    }
+    const content=scene?.querySelector('.slide-content');if(!content)return;
     content.style.setProperty('--fit',1);
     if(scene.classList.contains('lyrics-slide')){
       const block=content.querySelector('.lyrics');let size=Math.min(scene.clientWidth*.12,scene.clientHeight*.46/(1.35*this.lyricMaxLines));block.style.fontSize=`${size}px`;
@@ -37,7 +51,7 @@ export class ForegroundManager {
   destroy(){this.observer.disconnect();for(const scene of this.host.children)scene.getAnimations({subtree:true}).forEach(a=>a.cancel());this.host.replaceChildren();}
   render(item,active,cue=false){
     const placeholder=!active && item.type==='media' && item.track?.kind!=='audio';
-    const key=JSON.stringify([item.id,item.type,item.blocks,item.src,item.align,item.layout,item.credit,item.lyricStyle,item.lyricLines,item.pagination,item.heading,item.readingTitle,item.readingFont,item.columns,item.qr,item.track?.label,item.track?.poster,placeholder]);
+    const key=JSON.stringify([item.id,item.type,item.blocks,item.src,item.align,item.layout,item.credit,item.lyricStyle,item.lyricLines,item.pagination,item.heading,item.readingTitle,item.readingFont,item.columns,item.topic,item.qr,item.track?.label,item.track?.poster,placeholder]);
     if(key===this.key)return;this.key=key;this.onError('');
     for(const old of this.exiting){old.getAnimations().forEach(a=>a.cancel());old.remove();}this.exiting.clear();
     const previous=this.current,scene=document.createElement('div');scene.className='foreground';
@@ -49,10 +63,21 @@ export class ForegroundManager {
     }else if(item.layout==='roster'){
       scene.classList.add('roster-slide');const heading=document.createElement('h1');heading.textContent=item.heading;scene.append(heading);
       const columns=document.createElement('div');columns.className='roster-columns';
-      const maxRows=Math.max(...item.columns.map(c=>c.rows.length));columns.style.setProperty('--roster-rows',maxRows);
-      for(const column of item.columns){const panel=document.createElement('section');panel.className='roster-column';
-        for(let i=0;i<column.rows.length;i++){const row=column.rows[i],entry=document.createElement('div');entry.className='roster-row';entry.style.gridRow=String(i+1);entry.style.gridColumn='2';
-          if(row.group){entry.classList.add('roster-group-row');if(column.rows[i+1]?.group===row.group)entry.classList.add('roster-group-inner');if(i===0||column.rows[i-1].group!==row.group){let count=1;while(column.rows[i+count]?.group===row.group)count++;const label=document.createElement('div');label.className='roster-group-label';label.style.gridRow=`${i+1} / span ${count}`;for(const char of row.group){const letter=document.createElement('span');letter.textContent=char;label.append(letter);}panel.append(label);}}
+      const hasTopic=typeof item.topic==='string';
+      if(hasTopic)scene.classList.add('roster-with-topic');
+      const rosterColumns=hasTopic?[item.columns[0]??{rows:[]},item.columns[1]??{rows:[]},...item.columns.slice(2)]:item.columns;
+      const maxRows=Math.max(1,...rosterColumns.map((column,index)=>column.rows.length+(hasTopic&&index===1?2:0)));
+      columns.style.setProperty('--roster-rows',maxRows);
+      for(const [index,column] of rosterColumns.entries()){
+        const panel=document.createElement('section');panel.className='roster-column';
+        const topicColumn=hasTopic&&index===1;
+        const firstRow=topicColumn?3:1;
+        if(topicColumn&&item.topic.trim()){
+          const topic=document.createElement('strong');
+          topic.className='roster-topic';topic.textContent=item.topic;panel.append(topic);
+        }
+        for(let i=0;i<column.rows.length;i++){const row=column.rows[i],entry=document.createElement('div');entry.className='roster-row';entry.style.gridRow=String(firstRow+i);
+          if(row.group){entry.classList.add('roster-group-row');if(column.rows[i+1]?.group===row.group)entry.classList.add('roster-group-inner');if(i===0||column.rows[i-1].group!==row.group){let count=1;while(column.rows[i+count]?.group===row.group)count++;const label=document.createElement('div');label.className='roster-group-label';label.style.gridRow=`${firstRow+i} / span ${count}`;for(const char of row.group){const letter=document.createElement('span');letter.textContent=char;label.append(letter);}panel.append(label);}}
           const role=document.createElement('span');role.textContent=row.role;const name=document.createElement('strong');name.textContent=row.name;entry.append(role,name);panel.append(entry);
         }columns.append(panel);
       }scene.append(columns);

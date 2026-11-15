@@ -28,6 +28,7 @@ export function expandSequence(config,songs,backgrounds,defaultBackground){
       if(!page)throw new Error(`找不到頁面：${pageId}`);
       if(!['blank','text','image','media','web'].includes(page.type))throw new Error(`${pageId}：type 必須為 blank、text、image、media 或 web。`);
       if(page.layout==='roster' && (!Array.isArray(page.columns)||page.columns.some(c=>!Array.isArray(c.rows))))throw new Error(`${pageId}：服事表 columns 需要 rows。`);
+      if(page.layout==='roster' && Object.hasOwn(page,'topic') && typeof page.topic!=='string')throw new Error(`${pageId}：服事表 topic 必須是文字，未定可填空字串。`);
       if(page.blocks && (!Array.isArray(page.blocks) || page.blocks.some(b=>!['eyebrow','title','subtitle','text','quote','account','caption','lyrics'].includes(b.kind) || typeof b.text!=='string')))throw new Error(`${pageId}：blocks 需指定有效的 kind 與文字 text。`);
       if(page.type==='web'){webURL(page.src);if(page.originalURL)webURL(page.originalURL);}
       if(page.type==='image' && !page.src)throw new Error(`${pageId}：圖片需要 src。`);

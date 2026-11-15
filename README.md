@@ -453,7 +453,7 @@ F8／緊急按鈕立即靜音，在投影中央顯示封面／歌名，四周留
 
 ## 服事表、QR 與音樂轉場
 
-文字服事表可直接編輯角色及姓名，日期沿用同一變數：
+文字服事表可直接編輯角色及姓名，日期沿用同一變數。選填的 `topic` 會使用雙欄投影版型，主題顯示於右欄第一列，左欄第一列可放講員。主題未定時可填 `topic: ''`，保留主題的位置。
 
 ```yaml
 pages:
@@ -461,10 +461,11 @@ pages:
     type: text
     layout: roster
     heading: "{{date}} 服務團隊"
+    topic: 在日常中彼此扶持
     media: keep
     columns:
       - rows:
-          - { role: 主持, name: 林小晴 }
+          - { role: 分享, name: 林小晴 }
           - { role: 音樂, name: 陳小光 }
       - rows:
           - { role: 接待, name: 王小禾 }

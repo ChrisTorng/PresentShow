@@ -104,8 +104,10 @@ export function leaderSnapshot(show, raw) {
   show.items.forEach((item,slideIndex)=>{
     if(routed.has(slideIndex))return;
     const area=first<0||slideIndex<first?'before':slideIndex>last?'after':'worship';
-    const lines=item.layout==='roster'?[item.heading,...item.columns.flatMap(column=>column.rows.map(row=>[row.group,row.role,row.name].filter(Boolean).join('　')))]:
-      item.blocks?.flatMap(block=>block.text.split('\n'))||[item.track?.label||item.label||''];
+    const lines=item.layout==='roster'
+      ? [item.heading,...(item.topic?.trim()?[item.topic]:[]),
+          ...item.columns.flatMap(column=>column.rows.map(row=>[row.group,row.role,row.name].filter(Boolean).join('　')))]
+      : item.blocks?.flatMap(block=>block.text.split('\n'))||[item.track?.label||item.label||''];
     const page={slideIndex,section:item.section.id,sectionTitle:item.section.title,
       name:item.label||'',lines,seconds:item.seconds||0,page:item.pagination||'',kind:item.type};
     (area==='worship'||item.section.title==='會前'?extraPages:readOnly)[area].push(page);

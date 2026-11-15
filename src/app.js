@@ -136,7 +136,7 @@ function previewCue(){
     item.song?.sectionKey==='C'?'chorus':item.song?.sectionKey==='P'?'prechorus':
     ['T','B'].includes(item.song?.sectionKey)?'tag':'verse';
   $('#next-lyric-lines').textContent=item.blocks?.find(b=>b.kind==='lyrics')?.text
-    ||item.blocks?.map(b=>b.text).filter(Boolean).join('\n')||'';
+    ||item.blocks?.map(b=>b.text).filter(Boolean).join('\n')||item.topic||'';
   requestAnimationFrame(fitNextLyrics);
 }
 function queueCue(at){selectedPage=at;cues.pending=at;cues.last=null;leaderSync.publish();refreshMain();}
