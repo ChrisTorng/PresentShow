@@ -89,6 +89,14 @@
 #shield-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#17232c;opacity:.7}
 #shield-title{position:relative;color:white;background:#142a3ed9;border-radius:1vw;padding:1vw 2vw;font-size:4vw;text-align:center;max-width:85%}
 #web-layer{position:absolute;inset:0;background:#fff;z-index:4}#web-layer iframe{width:100%;height:100%;border:0;display:block}
+#web-layer:has(> .canva-embed){width:100%;height:100%;container-type:size;background:#000}
+#web-layer > .canva-embed{
+  position:absolute;
+  inset:0;
+  margin:auto;
+  width:min(100cqw,calc(100cqh * 16 / 9));
+  height:min(100cqh,calc(100cqw * 9 / 16));
+}
 .web-active #ambient,.web-active #foreground{visibility:hidden}.web-placeholder{background:#f0f3f4;flex-direction:column;text-align:center}.web-placeholder h1{font-size:7cqw}.web-placeholder p{font-size:3cqw}
 .foreground.reading-slide .slide-content{justify-content:flex-start}
 .reading-screen-fit{font-family:"Microsoft JhengHei","Noto Sans TC",sans-serif;color:#082653}

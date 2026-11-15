@@ -20,6 +20,23 @@ test('embedded web page is not reloaded on render and is removed when leaving',(
  const host={hidden:true,replaceChildren(){}},web=new WebStage(host,()=>{}),page={type:'web',src:'https://example.com',label:'Example'};
  try{web.set(page,true);web.set(page,true);assert.equal(created,1);assert.equal(host.hidden,false);web.set({type:'text'},true);assert.equal(removed,1);assert.equal(web.frame,null);assert.equal(host.hidden,true);web.set(page,false);assert.equal(created,1);}finally{globalThis.document=previous}
 });
+test('only embedded Canva designs get the presentation aspect ratio',()=>{
+ const previous=globalThis.document;
+ globalThis.document={createElement:()=>({setAttribute(){},remove(){}})};
+ const web=new WebStage({replaceChildren(){}},()=>{});
+ const src='https://www.canva.com/design/demo/token/edit';
+ try{
+  web.set({type:'web',src},true);
+  assert.equal(web.frame.className,'canva-embed');
+  assert.equal(web.frame.src,'https://www.canva.com/design/demo/token/view?embed');
+  web.set({type:'web',src,embed:false},true);
+  assert.equal(web.frame.className,undefined);
+  web.set({type:'web',src:'https://www.canva.com/design/demo/view?embed'},true);
+  assert.equal(web.frame.className,'canva-embed');
+  web.set({type:'web',src:'https://example.com/design/demo/view?embed'},true);
+  assert.equal(web.frame.className,undefined);
+ }finally{globalThis.document=previous;}
+});
 import {forwardStageKey} from '../src/player/keyboard.js';
 import {BackgroundManager,registerBackgroundStyle} from '../src/backgrounds/index.js';
 test('web page owns all projection keys, including outer-document arrow input',()=>{

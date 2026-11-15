@@ -488,7 +488,7 @@ pages:
 
 ## 嵌入網頁與 Canva
 
-頁面支援 type: web、src: HTTPS 網址。Canva edit 網址會轉為 view?embed 檢視模式；設 embed: false 可保留原網址，但編輯網站可能禁止被嵌入。網頁填滿原投影視窗，沒有 PresentShow 背景；離頁立即移除 iframe，也停止該頁的網頁內容。
+頁面支援 type: web、src: HTTPS 網址。Canva edit 網址會轉為 view?embed 檢視模式；設 embed: false 可保留原網址，但編輯網站可能禁止被嵌入。Canva 內嵌簡報依投影視窗大小自動置中，維持 16:9，其餘網頁填滿投影視窗。離頁立即移除 iframe，也停止該頁的網頁內容。
 
 報告項目設 bookends: false，下一項可設 startBlank: false，避免自動空白页。
 

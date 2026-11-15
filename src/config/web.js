@@ -11,3 +11,9 @@ export function embedURL(source){
   }
   return url.href;
 }
+export function isCanvaEmbed(source){
+  const url=webURL(source);
+  return url.hostname==='www.canva.com'
+    && /^\/design\/[^/]+(?:\/[^/]+)?\/view\/?$/.test(url.pathname)
+    && url.searchParams.has('embed');
+}

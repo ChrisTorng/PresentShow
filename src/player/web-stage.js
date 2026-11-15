@@ -1,4 +1,4 @@
-import {embedURL} from '../config/web.js';
+import {embedURL,isCanvaEmbed} from '../config/web.js';
 export class WebStage{
   constructor(host,onError){this.host=host;this.onError=onError;this.key='';this.frame=null;}
   set(item,active){
@@ -6,6 +6,7 @@ export class WebStage{
     const source=item.embed===false?item.src:embedURL(item.src);
     if(this.key===source)return;this.destroy();this.key=source;
     const frame=document.createElement('iframe');frame.title=item.label||'報告網頁';frame.allow='fullscreen; autoplay; clipboard-write';frame.allowFullscreen=true;
+    if(isCanvaEmbed(source))frame.className='canva-embed';
     frame.setAttribute('sandbox','allow-scripts allow-same-origin allow-forms allow-popups allow-presentation allow-downloads');
     frame.referrerPolicy='strict-origin-when-cross-origin';frame.src=source;
     frame.onerror=()=>this.onError('網頁無法載入，請檢查分享權限或改用原網頁。');

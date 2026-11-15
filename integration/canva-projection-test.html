@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PresentShow · Canva 投影測試</title>
+  <link rel="stylesheet" href="../src/styles/backgrounds.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; height: 100dvh; display: flex; flex-direction: column; color: #f5f5f5; background: #101218; font: 16px system-ui, sans-serif; }
+    header { padding: .65rem 1rem; display: flex; align-items: center; gap: .55rem 1rem; flex-wrap: wrap; }
+    select, button { font: inherit; padding: .35rem .55rem; }
+    output { color: #bbc6d8; font-size: .875rem; }
+    a { color: #acd5ff; }
+    #stage { position: relative; flex: 1; min-height: 0; background: #000; }
+    #stage:fullscreen { width: 100%; height: 100%; }
+    #stage.unfitted #web-layer iframe { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <header>
+    <label>Canva <select id="design">
+      <option value="nov">11/15</option><option value="oct">10/25</option><option value="sep">9/20</option>
+    </select></label>
+    <label>容器 <select id="mode">
+      <option value="auto">自動配合視窗</option><option value="unfitted">舊版滿版</option>
+    </select></label>
+    <button id="fullscreen" type="button">測試區全螢幕</button>
+    <a id="open" target="_blank" rel="noopener">另開內嵌頁</a>
+    <output id="size" aria-live="polite"></output>
+  </header>
+  <section id="stage" aria-label="投影測試區">
+    <div id="web-layer" hidden></div>
+  </section>
+  <script type="module">
+    import {WebStage} from '../src/player/web-stage.js';
+
+    const designs = {
+      nov: 'DAHaPR6ugv0/4zMlJoPdKUpnMAXsGBJkgQ',
+      oct: 'DAHXn76m5kk/SSnELOlQ0Z7ZTJ7Xt5KKxQ',
+      sep: 'DAGs-NbPXrk/JAVbX0W0ag5rzGUUht1pKg',
+    };
+    const select = document.querySelector('#design');
+    const mode = document.querySelector('#mode');
+    const stage = document.querySelector('#stage');
+    const layer = document.querySelector('#web-layer');
+    const size = document.querySelector('#size');
+    const open = document.querySelector('#open');
+    const reportSize = () => {
+      const frame = layer.querySelector('iframe');
+      const rect = frame?.getBoundingClientRect();
+      if (rect) {
+        const area = stage.getBoundingClientRect();
+        size.textContent = `投影區 ${Math.round(area.width)} × ${Math.round(area.height)} ｜ Canva ${Math.round(rect.width)} × ${Math.round(rect.height)}`;
+      }
+    };
+    const web = new WebStage(layer, message => { if (message) size.textContent = message; });
+    function update() {
+      stage.classList.toggle('unfitted', mode.value === 'unfitted');
+      const source = 'https://www.canva.com/design/' + designs[select.value] + '/view';
+      web.set({type:'web', label:select.selectedOptions[0].text + ' Canva 報告', src:source}, true);
+      open.href = layer.querySelector('iframe').src;
+      reportSize();
+    }
+    select.addEventListener('change', update);
+    mode.addEventListener('change', update);
+    document.querySelector('#fullscreen').addEventListener('click', async () => {
+      try { await stage.requestFullscreen(); }
+      catch { size.textContent = '瀏覽器無法進入全螢幕。'; }
+    });
+    new ResizeObserver(reportSize).observe(layer);
+    update();
+  </script>
+</body>
+</html>
